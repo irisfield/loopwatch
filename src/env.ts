@@ -3,7 +3,7 @@ export function hasPerformanceNow(): boolean {
 }
 
 export function hasPerformanceObserver(): boolean {
-  return typeof PerformanceObserver !== "undefined";
+  return typeof PerformanceObserver === "function";
 }
 
 export function hasRequestAnimationFrame(): boolean {
