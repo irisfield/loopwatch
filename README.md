@@ -68,7 +68,7 @@ When a required API is missing, the relevant export throws `EnvironmentNotSuppor
 
 ## Bundle size
 
-See Releases.
+`dist/index.min.mjs`: 3.1 KB minified · 1.3 KB gzipped
 
 ## Development
 
