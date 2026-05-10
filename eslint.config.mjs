@@ -44,6 +44,10 @@ export default tseslint.config(
   {
     rules: {
       // TypeScript — type-checker-backed
+      "@typescript-eslint/consistent-type-assertions": [
+        "error",
+        { assertionStyle: "as", objectLiteralTypeAssertions: "never" },
+      ],
       "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/switch-exhaustiveness-check": "error",
       "@typescript-eslint/prefer-nullish-coalescing": "error",
