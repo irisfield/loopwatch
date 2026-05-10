@@ -11,7 +11,11 @@
     }
   },
   "sideEffects": false,
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "rollup -c",
     "type-check": "tsc --noEmit",
@@ -20,7 +24,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint --cache src test",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
-    "prepublishOnly": "bun run lint && bun run type-check && bun run test && bun run build"
+    "prepublishOnly": "bun run lint && bun run type-check && bun run test && bun run build",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=18"
@@ -41,6 +46,12 @@
     "typescript",
     "monitoring"
   ],
+  "lint-staged": {
+    "{src,test}/**/*.ts": [
+      "eslint --cache --fix",
+      "prettier --write"
+    ]
+  },
   "prettier": {
     "singleQuote": false,
     "semi": true,
@@ -56,6 +67,8 @@
     "eslint-plugin-import-x": "^4.16.2",
     "eslint-plugin-unicorn": "^64.0.0",
     "happy-dom": "^20.9.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.4",
     "prettier": "^3.8.3",
     "rollup": "^4.60.3",
     "rollup-plugin-dts": "^6.4.1",
