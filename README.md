@@ -52,7 +52,7 @@ Wraps the browser's `PerformanceObserver` for the `longtask` entry type. Any syn
 import { LongTaskObserver } from "loopwatch";
 
 const observer = new LongTaskObserver({
-  threshold: 50,                                              // W3C minimum; raise to filter noise
+  threshold: 50, // W3C minimum; raise to filter noise
   onLongTask: (entry) => console.warn("long task", entry.duration, "ms"),
 });
 
@@ -115,13 +115,13 @@ If `droppedFrames` is non-zero while nothing appears to be running, a background
 
 ## Browser support
 
-| API | Required by | Notes |
-|---|---|---|
-| `performance.now` | All exports | Universal in modern browsers |
-| `setTimeout` | `measureLoopLag` | Universal |
-| `requestAnimationFrame` | `rafCadence` | Universal |
-| `PerformanceObserver` | `LongTaskObserver` | Chrome, Edge, Firefox; `'longtask'` not supported in Safari |
-| `queueMicrotask` | `microtaskScheduling` | All modern browsers |
+| API                     | Required by           | Notes                                                       |
+| ----------------------- | --------------------- | ----------------------------------------------------------- |
+| `performance.now`       | All exports           | Universal in modern browsers                                |
+| `setTimeout`            | `measureLoopLag`      | Universal                                                   |
+| `requestAnimationFrame` | `rafCadence`          | Universal                                                   |
+| `PerformanceObserver`   | `LongTaskObserver`    | Chrome, Edge, Firefox; `'longtask'` not supported in Safari |
+| `queueMicrotask`        | `microtaskScheduling` | All modern browsers                                         |
 
 When a required API is missing, the relevant export throws `EnvironmentNotSupportedError`.
 
@@ -142,6 +142,19 @@ bun install
 bun test
 bun run build
 ```
+
+### Running the example
+
+`examples/basic.html` imports from `dist/index.mjs` and exercises all four APIs in a browser. Build first, then serve the project root over HTTP (browsers block ES module imports from `file://`):
+
+```
+bun run build
+bunx serve .
+```
+
+Open `http://localhost:3000/examples/basic.html` and wait a few seconds for all measurements to finish. Each API result renders in its own block as it resolves.
+
+Note: the page runs all four probes concurrently. `macrotaskMeanLagMs` from `microtaskScheduling` will read high because the `setTimeout(0)` calls from every probe are competing at once. Run them individually in the browser console for clean baseline numbers.
 
 ## License
 
