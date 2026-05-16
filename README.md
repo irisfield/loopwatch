@@ -30,6 +30,8 @@ const report = await measureLoopLag({ durationMs: 2000 });
 // report.max          — single worst spike observed during the sample window
 ```
 
+`durationMs` must be a positive finite number. Invalid values throw `RangeError`.
+
 Call it before and after a user action to see how much that action blocks the main thread.
 
 ```typescript
@@ -67,6 +69,8 @@ for (const entry of observer) {
 }
 ```
 
+`threshold` must be a positive finite number. Invalid values throw `RangeError`.
+
 A single 100 ms long task drops roughly 6 frames at 60 Hz and makes the page feel frozen to the user.
 
 ---
@@ -89,6 +93,8 @@ const report = await microtaskScheduling({ count: 100 });
 // If microtasksFlushedFirst is false, something is wrong with the runtime.
 ```
 
+`count` must be a positive integer. Invalid values throw `RangeError`. Pass an `AbortSignal` as `signal` to resolve early.
+
 ---
 
 ### `rafCadence`
@@ -108,6 +114,8 @@ const report = await rafCadence(2000);
 // Healthy animation: droppedFrames === 0, p95 close to meanFrameTimeMs.
 // Janky animation:   droppedFrames > 0 or p95 >> meanFrameTimeMs.
 ```
+
+Pass `{ durationMs, signal }` instead of a number when you need cancellation. `durationMs` must be a positive finite number; invalid values throw `RangeError`.
 
 If `droppedFrames` is non-zero while nothing appears to be running, a background task is stealing render time.
 
