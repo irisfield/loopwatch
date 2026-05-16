@@ -1,4 +1,5 @@
 import { EnvironmentNotSupportedError, hasPerformanceObserver } from "./env";
+import { assertPositiveFinite } from "./validation";
 
 export interface LongTaskOptions {
   threshold?: number;
@@ -16,6 +17,8 @@ export class LongTaskObserver implements Iterable<PerformanceEntry> {
       throw new EnvironmentNotSupportedError("PerformanceObserver");
     }
     this._threshold = options?.threshold ?? 50;
+    assertPositiveFinite(this._threshold, "threshold");
+
     this._onLongTask = options?.onLongTask;
   }
 

@@ -41,4 +41,21 @@ describe("measureLoopLag", () => {
     const report = await measureLoopLag({ durationMs: 2000, signal: controller.signal });
     expect(report.sampleCount).toBe(0);
   });
+
+  it("resolves early when aborted while running", async () => {
+    const controller = new AbortController();
+    const promise = measureLoopLag({ durationMs: 2000, signal: controller.signal });
+
+    controller.abort();
+
+    const report = await promise;
+    expect(report.durationMs).toBeLessThan(2000);
+  });
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "throws RangeError for invalid durationMs %s",
+    (durationMs) => {
+      expect(() => measureLoopLag({ durationMs })).toThrow(RangeError);
+    },
+  );
 });

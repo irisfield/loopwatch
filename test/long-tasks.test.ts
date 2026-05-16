@@ -59,6 +59,13 @@ describe("LongTaskObserver", () => {
     expect(() => new LongTaskObserver()).toThrow(EnvironmentNotSupportedError);
   });
 
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "throws RangeError for invalid threshold %s",
+    (threshold) => {
+      expect(() => new LongTaskObserver({ threshold })).toThrow(RangeError);
+    },
+  );
+
   it("start() calls observe with longtask type and buffered: true", () => {
     const observer = new LongTaskObserver();
     observer.start();

@@ -1,5 +1,6 @@
 import { EnvironmentNotSupportedError, hasPerformanceNow } from "./env";
 import { max, mean, min, percentile } from "./stats";
+import { assertPositiveFinite } from "./validation";
 
 export interface MeasureOptions {
   durationMs?: number;
@@ -23,6 +24,8 @@ export function measureLoopLag(options?: MeasureOptions): Promise<LagReport> {
   }
 
   const durationMs = options?.durationMs ?? 2000;
+  assertPositiveFinite(durationMs, "durationMs");
+
   const signal = options?.signal;
 
   return new Promise<LagReport>((resolve) => {
