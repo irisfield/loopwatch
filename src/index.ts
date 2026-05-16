@@ -8,6 +8,6 @@ export { microtaskScheduling } from "./microtasks";
 export type { MicrotaskOptions, MicrotaskReport } from "./microtasks";
 
 export { rafCadence } from "./raf-cadence";
-export type { RafReport } from "./raf-cadence";
+export type { RafOptions, RafReport } from "./raf-cadence";
 
 export { EnvironmentNotSupportedError } from "./env";

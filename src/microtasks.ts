@@ -1,8 +1,10 @@
 import { EnvironmentNotSupportedError, hasPerformanceNow, hasQueueMicrotask } from "./env";
 import { mean } from "./stats";
+import { assertPositiveInteger } from "./validation";
 
 export interface MicrotaskOptions {
   count?: number;
+  signal?: AbortSignal;
 }
 
 export interface MicrotaskReport {
@@ -21,6 +23,9 @@ export function microtaskScheduling(options?: MicrotaskOptions): Promise<Microta
   }
 
   const count = options?.count ?? 100;
+  assertPositiveInteger(count, "count");
+
+  const signal = options?.signal;
 
   return new Promise<MicrotaskReport>((resolve) => {
     const microLags: number[] = [];
@@ -30,8 +35,12 @@ export function microtaskScheduling(options?: MicrotaskOptions): Promise<Microta
     let firstMacroOrder = -1;
     let completed = 0;
     const total = count * 2;
+    let finalized = false;
 
     function finalize(): void {
+      if (finalized) return;
+      finalized = true;
+      signal?.removeEventListener("abort", finalize);
       resolve({
         count,
         microtaskMeanLagMs: mean(microLags),
@@ -40,10 +49,18 @@ export function microtaskScheduling(options?: MicrotaskOptions): Promise<Microta
       });
     }
 
+    if (signal?.aborted) {
+      finalize();
+      return;
+    }
+
+    signal?.addEventListener("abort", finalize);
+
     for (let i = 0; i < count; i++) {
       const scheduledAt = performance.now();
 
       queueMicrotask(() => {
+        if (finalized) return;
         const order = resolutionOrder++;
         lastMicroOrder = Math.max(lastMicroOrder, order);
         microLags.push(performance.now() - scheduledAt);
@@ -52,6 +69,7 @@ export function microtaskScheduling(options?: MicrotaskOptions): Promise<Microta
       });
 
       setTimeout(() => {
+        if (finalized) return;
         const order = resolutionOrder++;
         if (firstMacroOrder === -1) firstMacroOrder = order;
         macroLags.push(performance.now() - scheduledAt);
