@@ -10,4 +10,7 @@ export type { MicrotaskOptions, MicrotaskReport } from "./microtasks";
 export { rafCadence } from "./raf-cadence";
 export type { RafOptions, RafReport } from "./raf-cadence";
 
+export { LoopMonitor } from "./loop-monitor";
+export type { LoopMonitorOptions, LoopMonitorReport } from "./loop-monitor";
+
 export { EnvironmentNotSupportedError } from "./env";
