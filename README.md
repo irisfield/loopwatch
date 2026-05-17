@@ -121,14 +121,46 @@ If `droppedFrames` is non-zero while nothing appears to be running, a background
 
 ---
 
+### `LoopMonitor`
+
+Runs loop lag, RAF cadence, and long-task collection on a repeating cycle. Use it when you want ongoing app-level telemetry instead of a one-off probe.
+
+```typescript
+import { LoopMonitor } from "loopwatch";
+
+const monitor = new LoopMonitor({
+  intervalMs: 5000,
+  lagDurationMs: 500,
+  rafDurationMs: 500,
+  lagThresholdMs: 50,
+  droppedFrameThreshold: 0,
+  onReport: (report) => {
+    console.log(report.lag.p99, report.raf.droppedFrames, report.longTasks.length);
+  },
+  onJank: (report) => {
+    console.warn("event loop jank", report);
+  },
+});
+
+monitor.start();
+
+// Later:
+const latest = monitor.snapshot();
+monitor.stop();
+```
+
+`start()` and `stop()` are idempotent. `stop()` aborts the active sampling cycle and prevents later callbacks from firing. `clear()` removes the last report and clears buffered long tasks.
+
+---
+
 ## Browser support
 
 | API                     | Required by           | Notes                                                       |
 | ----------------------- | --------------------- | ----------------------------------------------------------- |
 | `performance.now`       | All exports           | Universal in modern browsers                                |
 | `setTimeout`            | `measureLoopLag`      | Universal                                                   |
-| `requestAnimationFrame` | `rafCadence`          | Universal                                                   |
-| `PerformanceObserver`   | `LongTaskObserver`    | Chrome, Edge, Firefox; `'longtask'` not supported in Safari |
+| `requestAnimationFrame` | `rafCadence`, `LoopMonitor` | Universal                                                   |
+| `PerformanceObserver`   | `LongTaskObserver`, `LoopMonitor` | Chrome, Edge, Firefox; `'longtask'` not supported in Safari |
 | `queueMicrotask`        | `microtaskScheduling` | All modern browsers                                         |
 
 When a required API is missing, the relevant export throws `EnvironmentNotSupportedError`.
