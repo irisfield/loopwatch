@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>loopwatch browser smoke</title>
+  </head>
+  <body>
+    <main>loopwatch browser smoke</main>
+    <script type="module">
+      import { LongTaskObserver, measureLoopLag, rafCadence } from "/dist/index.mjs";
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      function blockMainThread(ms) {
+        const start = performance.now();
+        while (performance.now() - start < ms) {
+          Math.sqrt(Math.random());
+        }
+      }
+
+      window.loopwatchSmoke = {
+        async raf() {
+          return rafCadence({ durationMs: 120 });
+        },
+        async timeoutLag() {
+          const startedAt = performance.now();
+          await sleep(25);
+          return performance.now() - startedAt;
+        },
+        async blockedLag() {
+          const reportPromise = measureLoopLag({ durationMs: 180 });
+          setTimeout(() => {
+            blockMainThread(90);
+          }, 20);
+          return reportPromise;
+        },
+        async longTask() {
+          const observer = new LongTaskObserver({ threshold: 50 });
+          observer.start();
+          await sleep(25);
+          blockMainThread(90);
+          await sleep(150);
+          observer.stop();
+          return observer.getLongTasks().map((entry) => ({
+            duration: entry.duration,
+            entryType: entry.entryType,
+            name: entry.name,
+          }));
+        },
+      };
+    </script>
+  </body>
+</html>

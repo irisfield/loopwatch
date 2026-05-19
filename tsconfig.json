@@ -15,8 +15,9 @@
     "declarationMap": true,
     "sourceMap": true,
     "skipLibCheck": true,
+    "types": ["node"],
     "forceConsistentCasingInFileNames": true,
     "noEmit": true
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "browser-smoke", "playwright.config.ts"]
 }
