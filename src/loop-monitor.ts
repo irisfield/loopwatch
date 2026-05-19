@@ -1,4 +1,9 @@
-import { EnvironmentNotSupportedError, hasPerformanceNow, hasRequestAnimationFrame } from "./env";
+import {
+  EnvironmentNotSupportedError,
+  hasPerformanceNow,
+  hasPerformanceObserver,
+  hasRequestAnimationFrame,
+} from "./env";
 import { LongTaskObserver, type LongTaskOptions } from "./long-tasks";
 import { type LagReport, measureLoopLag } from "./measure-lag";
 import { type RafReport, rafCadence } from "./raf-cadence";
@@ -45,6 +50,9 @@ export class LoopMonitor {
     }
     if (!hasRequestAnimationFrame()) {
       throw new EnvironmentNotSupportedError("requestAnimationFrame");
+    }
+    if (!hasPerformanceObserver()) {
+      throw new EnvironmentNotSupportedError("PerformanceObserver");
     }
 
     this._intervalMs = options?.intervalMs ?? 5000;

@@ -1,6 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { type MicrotaskReport, microtaskScheduling } from "../src/microtasks";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("microtaskScheduling", () => {
   it("resolves with a report containing all required fields", async () => {
@@ -57,6 +61,5 @@ describe("microtaskScheduling", () => {
   it("throws EnvironmentNotSupportedError when queueMicrotask is unavailable", () => {
     vi.stubGlobal("queueMicrotask", null);
     expect(() => microtaskScheduling()).toThrow("queueMicrotask");
-    vi.unstubAllGlobals();
   });
 });
