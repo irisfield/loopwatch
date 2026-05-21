@@ -8,6 +8,30 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs"
+    },
+    "./measure-lag": {
+      "types": "./dist/measure-lag.d.ts",
+      "import": "./dist/measure-lag.mjs"
+    },
+    "./raf-cadence": {
+      "types": "./dist/raf-cadence.d.ts",
+      "import": "./dist/raf-cadence.mjs"
+    },
+    "./microtasks": {
+      "types": "./dist/microtasks.d.ts",
+      "import": "./dist/microtasks.mjs"
+    },
+    "./long-tasks": {
+      "types": "./dist/long-tasks.d.ts",
+      "import": "./dist/long-tasks.mjs"
+    },
+    "./loop-monitor": {
+      "types": "./dist/loop-monitor.d.ts",
+      "import": "./dist/loop-monitor.mjs"
+    },
+    "./compare-reports": {
+      "types": "./dist/compare-reports.d.ts",
+      "import": "./dist/compare-reports.mjs"
     }
   },
   "sideEffects": false,
@@ -26,13 +50,18 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint --cache src test browser-smoke playwright.config.ts",
     "format": "prettier --write \"{src,test,browser-smoke}/**/*.ts\" \"playwright.config.ts\" --list-different",
+    "test:pack": "bun run build && node scripts/smoke-dist.mjs && bun pm pack --dry-run",
     "prepublishOnly": "bun run lint && bun run type-check && bun run test && bun run build",
-    "prepare": "husky"
+    "prepare": "[ -x node_modules/.bin/husky ] && node_modules/.bin/husky || true"
   },
   "engines": {
     "node": ">=22"
   },
   "license": "MIT",
+  "homepage": "https://github.com/irisfield/loopwatch#readme",
+  "bugs": {
+    "url": "https://github.com/irisfield/loopwatch/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/irisfield/loopwatch.git"
