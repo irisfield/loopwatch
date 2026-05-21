@@ -153,6 +153,105 @@ monitor.stop();
 
 ---
 
+## Recipes
+
+### Debug a slow click
+
+Wrap the suspect handler with before/after lag samples to isolate which operation is blocking the thread:
+
+```typescript
+import { compareReports, measureLoopLag } from "loopwatch";
+
+button.addEventListener("click", async () => {
+  const before = await measureLoopLag({ durationMs: 200 });
+  processCartItems(cart);
+  const after = await measureLoopLag({ durationMs: 200 });
+
+  const delta = compareReports(before, after);
+  if (delta.p99Delta > 30 || delta.blockedTimeMsDelta > 0) {
+    console.warn("processCartItems is blocking the event loop", delta);
+  }
+});
+```
+
+### Compare before/after an optimization
+
+```typescript
+import { compareReports, measureLoopLag } from "loopwatch";
+
+const before = await measureLoopLag({ durationMs: 500 });
+runExpensiveOperation();
+const after = await measureLoopLag({ durationMs: 500 });
+
+const delta = compareReports(before, after);
+console.log(`p99 changed by ${delta.p99Delta.toFixed(1)} ms`);
+console.log(`blocked time changed by ${delta.blockedTimeMsDelta.toFixed(1)} ms`);
+console.log(`spike count changed by ${delta.spikeCountDelta}`);
+```
+
+A negative `p99Delta` means the optimization reduced tail latency. Use `spikeCountDelta` to confirm that the number of threshold crossings also dropped — `p99` alone can mask bursty behavior.
+
+### Send telemetry to an analytics service
+
+Wire `LoopMonitor` to your telemetry pipeline for continuous production monitoring:
+
+```typescript
+import { LoopMonitor } from "loopwatch";
+
+const monitor = new LoopMonitor({
+  intervalMs: 30_000,
+  lagThresholdMs: 50,
+  droppedFrameThreshold: 2,
+  onReport: (report) => {
+    analytics.track("loop_health", {
+      p99LagMs: report.lag.p99,
+      blockedTimeMs: report.lag.blockedTimeMs,
+      droppedFrames: report.raf.droppedFrames,
+      longTaskCount: report.longTasks.length,
+      isJanky: report.isJanky,
+    });
+  },
+  onJank: (report) => {
+    errorTracker.captureMessage("event loop jank", { extra: report });
+  },
+});
+
+monitor.start();
+```
+
+`onReport` fires every `intervalMs`. `onJank` fires only when `lag.p99 >= lagThresholdMs` or `raf.droppedFrames > droppedFrameThreshold`, so it stays quiet under normal conditions and surfaces real problems without noise.
+
+### Detect background-tab throttling
+
+Browsers throttle `requestAnimationFrame` to ~1 fps (or pause it entirely) when a tab is hidden. `rafCadence` can detect this before kicking off rendering work:
+
+```typescript
+import { rafCadence } from "loopwatch";
+
+async function isTabThrottled(): Promise<boolean> {
+  const { estimatedFps } = await rafCadence({ durationMs: 300 });
+  return estimatedFps < 5;
+}
+
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible" && (await isTabThrottled())) {
+    console.warn("tab was throttled; skipping animation initialization");
+    return;
+  }
+  startAnimation();
+});
+```
+
+Typical foreground RAF cadence is 60–120 fps depending on the display. A reading below 5 fps reliably indicates the tab is backgrounded or the browser is deprioritizing it.
+
+---
+
+## Privacy
+
+loopwatch measures only event-loop and rendering timing. It does not collect, transmit, or expose any personally identifiable information, user identity, network activity, or fingerprinting data. The numbers it produces (lag percentiles, frame times, long-task durations) describe the runtime environment, not the user.
+
+---
+
 ## Browser support
 
 | API                     | Required by           | Notes                                                       |
@@ -164,6 +263,29 @@ monitor.stop();
 | `queueMicrotask`        | `microtaskScheduling` | All modern browsers                                         |
 
 When a required API is missing, the relevant export throws `EnvironmentNotSupportedError`.
+
+### Safari
+
+Safari does not implement the `longtask` `PerformanceObserver` entry type (as of Safari 17). This affects:
+
+- `LongTaskObserver` — throws `EnvironmentNotSupportedError` on construction in Safari.
+- `LoopMonitor` — also throws `EnvironmentNotSupportedError` because it depends on `LongTaskObserver` internally.
+
+`measureLoopLag`, `rafCadence`, and `microtaskScheduling` work in all modern browsers including Safari.
+
+To support Safari alongside Chrome/Edge/Firefox, guard long-task features with a try/catch:
+
+```typescript
+import { EnvironmentNotSupportedError, LongTaskObserver } from "loopwatch";
+
+try {
+  const observer = new LongTaskObserver({ onLongTask: (entry) => report(entry) });
+  observer.start();
+} catch (err) {
+  if (!(err instanceof EnvironmentNotSupportedError)) throw err;
+  // long-task detection not available in this browser
+}
+```
 
 ## Tree-shaking
 
