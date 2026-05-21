@@ -2,19 +2,40 @@ import typescript from "@rollup/plugin-typescript";
 import terser from "@rollup/plugin-terser";
 import dts from "rollup-plugin-dts";
 
-const input = "src/index.ts";
 const tsconfig = "./tsconfig.build.json";
 
-export default [
-  // 1. ESM — unminified
+const subpaths = [
+  "measure-lag",
+  "raf-cadence",
+  "microtasks",
+  "long-tasks",
+  "loop-monitor",
+  "compare-reports",
+];
+
+const subpathBuilds = subpaths.flatMap((name) => [
   {
-    input,
+    input: `src/${name}.ts`,
+    output: { file: `dist/${name}.mjs`, format: "esm", sourcemap: true },
+    plugins: [typescript({ tsconfig, declaration: false })],
+  },
+  {
+    input: `src/${name}.ts`,
+    output: { file: `dist/${name}.d.ts`, format: "esm" },
+    plugins: [dts()],
+  },
+]);
+
+export default [
+  // ESM — unminified root bundle
+  {
+    input: "src/index.ts",
     output: { file: "dist/index.mjs", format: "esm", sourcemap: true },
     plugins: [typescript({ tsconfig, declaration: false })],
   },
-  // 2. ESM — minified + obfuscated
+  // ESM — minified root bundle for CDN usage
   {
-    input,
+    input: "src/index.ts",
     output: { file: "dist/index.min.mjs", format: "esm", sourcemap: true },
     plugins: [
       typescript({ tsconfig, declaration: false }),
@@ -25,10 +46,12 @@ export default [
       }),
     ],
   },
-  // 3. Type declarations
+  // Type declarations — root bundle
   {
-    input,
+    input: "src/index.ts",
     output: { file: "dist/index.d.ts", format: "esm" },
     plugins: [dts()],
   },
+  // Subpath ESM + type declarations
+  ...subpathBuilds,
 ];
