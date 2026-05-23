@@ -305,18 +305,16 @@ bun test
 bun run build
 ```
 
-### Running the example
+### Running the examples
 
-`examples/basic.html` imports from `dist/index.mjs` and exercises all four APIs in a browser. Build first, then serve the project root over HTTP (browsers block ES module imports from `file://`):
+Build first, then serve the project root over HTTP (browsers block ES module imports from `file://`):
 
 ```
 bun run build
 bunx serve .
 ```
 
-Open `http://localhost:3000/examples/basic.html` and wait a few seconds for all measurements to finish. Each API result renders in its own block as it resolves.
-
-Note: the page runs all four probes concurrently. `macrotaskMeanLagMs` from `microtaskScheduling` will read high because the `setTimeout(0)` calls from every probe are competing at once. Run them individually in the browser console for clean baseline numbers.
+Open `http://localhost:3000/examples/index.html`. Each panel runs independently — select a scenario, click Run, and results appear inline. The page covers all six APIs with scenario controls that create different event-loop conditions: idle baseline, CPU block, repeated blocks, animation pressure, and before/after comparison.
 
 ## License
 

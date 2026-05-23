@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>loopwatch</title>
+    <style>
+      :root {
+        --bg: #0f0f0f;
+        --surface: #1a1a1a;
+        --surface2: #222;
+        --border: #2e2e2e;
+        --text: #d4d4d4;
+        --muted: #666;
+        --accent: #569cd6;
+        --green: #4ec9b0;
+        --yellow: #dcdcaa;
+        --red: #f44747;
+        --orange: #ce9178;
+        --purple: #c586c0;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: "Consolas", "Menlo", "Cascadia Code", monospace;
+        font-size: 13px;
+        background: var(--bg);
+        color: var(--text);
+        padding: 1.5rem 1rem 3rem;
+        line-height: 1.5;
+      }
+
+      header {
+        max-width: 1100px;
+        margin: 0 auto 1.75rem;
+        display: flex;
+        align-items: baseline;
+        gap: 1rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.75rem;
+      }
+      header h1 { font-size: 1.1rem; color: var(--accent); }
+      header p { font-size: 0.8rem; color: var(--muted); }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+        gap: 1.25rem;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.7rem 1rem 0.6rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .panel-header h2 { font-size: 0.85rem; color: var(--accent); font-weight: 600; flex: 1; }
+      .panel-header .tag { font-size: 0.7rem; color: var(--muted); }
+
+      .status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: var(--muted);
+        transition: background 0.2s;
+      }
+      .status[data-state="running"] { background: var(--yellow); animation: pulse 1s infinite; }
+      .status[data-state="done"]    { background: var(--green); }
+      .status[data-state="error"]   { background: var(--red); }
+
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+      .panel-desc {
+        font-size: 0.75rem;
+        color: var(--muted);
+        padding: 0.6rem 1rem 0;
+      }
+
+      .panel-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+      }
+
+      .btn-group { display: flex; gap: 2px; }
+
+      button {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 0.75rem;
+        padding: 0.3rem 0.65rem;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      button:hover { background: #2a2a2a; border-color: #444; }
+      button:disabled { opacity: 0.4; cursor: default; }
+      button.active { background: #1e3a52; border-color: var(--accent); color: var(--accent); }
+      button.btn-run { border-color: var(--green); color: var(--green); }
+      button.btn-run:hover { background: #1a2e2b; }
+      button.btn-stop { border-color: var(--red); color: var(--red); }
+      button.btn-stop:hover { background: #2e1a1a; }
+      button.btn-start { border-color: var(--green); color: var(--green); }
+      button.btn-start:hover { background: #1a2e2b; }
+      button.btn-trigger { border-color: var(--orange); color: var(--orange); }
+      button.btn-trigger:hover { background: #2e2010; }
+      button.btn-reset { color: var(--muted); }
+
+      .divider { flex: 1; }
+
+      .panel-result {
+        padding: 0.75rem 1rem 1rem;
+        border-top: 1px solid var(--border);
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .hint { color: var(--muted); font-size: 0.75rem; }
+      .running { color: var(--yellow); font-size: 0.75rem; }
+      .error-msg { color: var(--red); font-size: 0.75rem; }
+      .note { font-size: 0.72rem; color: var(--purple); }
+      .unsupported { color: var(--orange); font-size: 0.75rem; }
+
+      /* Bar chart — .chart is the grid; .bar-row uses display:contents so all rows share columns */
+      .chart { display: grid; grid-template-columns: max-content 1fr 4.5rem; align-items: center; column-gap: 0.5rem; row-gap: 5px; width: 100%; }
+      .bar-row { display: contents; }
+      .bar-label { font-size: 0.72rem; color: var(--muted); text-align: right; white-space: nowrap; }
+      .bar-track { height: 8px; background: var(--surface2); border-radius: 2px; overflow: hidden; min-width: 0; }
+      .bar-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+      .bar-fill.warn { background: var(--yellow); }
+      .bar-fill.bad  { background: var(--red); }
+      .bar-value { font-size: 0.72rem; color: var(--text); white-space: nowrap; }
+
+      /* Key/value list */
+      .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 4px 1rem; list-style: none; }
+      .kv div { display: flex; gap: 0.4rem; align-items: baseline; }
+      .kv dt { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; }
+      .kv dd { font-size: 0.78rem; color: var(--text); }
+
+      /* Comparison table */
+      .compare-wrap { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+      th { color: var(--muted); font-weight: normal; text-align: left; padding: 0.2rem 0.5rem; border-bottom: 1px solid var(--border); }
+      td { padding: 0.25rem 0.5rem; border-bottom: 1px solid #222; }
+      td.better { color: var(--green); }
+      td.worse  { color: var(--red); }
+      td.neutral { color: var(--muted); }
+
+      /* Long task entries */
+      .task-list { display: flex; flex-direction: column; gap: 3px; }
+      .task-entry { display: flex; gap: 0.75rem; font-size: 0.72rem; }
+      .task-entry .task-dur { color: var(--orange); width: 4rem; flex-shrink: 0; }
+      .task-entry .task-start { color: var(--muted); }
+
+      /* Monitor live area */
+      .monitor-meta { font-size: 0.72rem; color: var(--muted); display: flex; gap: 1rem; flex-wrap: wrap; }
+      .monitor-meta span b { color: var(--text); font-weight: normal; }
+      .jank-badge { color: var(--red); font-size: 0.72rem; }
+
+      @media (max-width: 520px) {
+        main { grid-template-columns: 1fr; }
+        .bar-row { grid-template-columns: 2.5rem 1fr 4rem; }
+        .kv { grid-template-columns: 1fr 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>loopwatch</h1>
+      <p>event-loop measurement tools · build first, then serve from project root</p>
+    </header>
+
+    <main>
+
+      <!-- Loop Lag -->
+      <section class="panel" id="panel-lag">
+        <div class="panel-header">
+          <h2>Loop Lag</h2>
+          <span class="tag">measureLoopLag</span>
+          <span class="status" data-state="idle" title="idle"></span>
+        </div>
+        <p class="panel-desc">Measures how long setTimeout(0) callbacks are delayed. Spikes mean the main thread is blocked.</p>
+        <div class="panel-controls">
+          <div class="btn-group">
+            <button class="active" data-lag-scenario="idle">Idle</button>
+            <button data-lag-scenario="cpu-block">CPU block</button>
+            <button data-lag-scenario="repeated">Repeated blocks</button>
+          </div>
+          <span class="divider"></span>
+          <button class="btn-run" id="run-lag">Run</button>
+          <button class="btn-reset" id="reset-lag">Reset</button>
+        </div>
+        <div class="panel-result" id="result-lag">
+          <span class="hint">Select a scenario and click Run.</span>
+        </div>
+      </section>
+
+      <!-- Long Tasks -->
+      <section class="panel" id="panel-lt">
+        <div class="panel-header">
+          <h2>Long Tasks</h2>
+          <span class="tag">LongTaskObserver</span>
+          <span class="status" data-state="idle" title="idle"></span>
+        </div>
+        <p class="panel-desc">Observes tasks that hold the main thread ≥ 50 ms. Trigger blocks during observation to see them collected.</p>
+        <div class="panel-controls">
+          <button class="btn-run" id="run-lt">Observe 5s</button>
+          <button class="btn-trigger" id="trigger-lt" disabled>Trigger 200ms block</button>
+          <span class="divider"></span>
+          <button class="btn-reset" id="reset-lt">Reset</button>
+        </div>
+        <div class="panel-result" id="result-lt">
+          <span class="hint">Click Observe, then trigger blocks during the window.</span>
+        </div>
+      </section>
+
+      <!-- Microtask Scheduling -->
+      <section class="panel" id="panel-micro">
+        <div class="panel-header">
+          <h2>Microtask Scheduling</h2>
+          <span class="tag">microtaskScheduling</span>
+          <span class="status" data-state="idle" title="idle"></span>
+        </div>
+        <p class="panel-desc">Interleaves queueMicrotask and setTimeout(0) calls, then measures when each fires and whether microtasks drain first.</p>
+        <div class="panel-controls">
+          <button class="btn-run" id="run-micro">Run</button>
+          <span class="divider"></span>
+          <button class="btn-reset" id="reset-micro">Reset</button>
+        </div>
+        <div class="panel-result" id="result-micro">
+          <span class="hint">Click Run to schedule 100 microtask/macrotask pairs.</span>
+        </div>
+      </section>
+
+      <!-- RAF Cadence -->
+      <section class="panel" id="panel-raf">
+        <div class="panel-header">
+          <h2>RAF Cadence</h2>
+          <span class="tag">rafCadence</span>
+          <span class="status" data-state="idle" title="idle"></span>
+        </div>
+        <p class="panel-desc">Measures actual frame delivery. Dropped frames indicate contention for the render thread.</p>
+        <div class="panel-controls">
+          <div class="btn-group">
+            <button class="active" data-raf-scenario="idle">Idle</button>
+            <button data-raf-scenario="pressure">Animation pressure</button>
+          </div>
+          <span class="divider"></span>
+          <button class="btn-run" id="run-raf">Run</button>
+          <button class="btn-reset" id="reset-raf">Reset</button>
+        </div>
+        <div class="panel-result" id="result-raf">
+          <span class="hint">Select a scenario and click Run.</span>
+        </div>
+      </section>
+
+      <!-- LoopMonitor -->
+      <section class="panel" id="panel-monitor">
+        <div class="panel-header">
+          <h2>LoopMonitor</h2>
+          <span class="tag">continuous</span>
+          <span class="status" data-state="idle" title="idle"></span>
+        </div>
+        <p class="panel-desc">Runs lag, RAF cadence, and long-task collection on a 5-second cycle. Reports continuously until stopped.</p>
+        <div class="panel-controls">
+          <button class="btn-start" id="start-monitor">Start</button>
+          <button class="btn-stop" id="stop-monitor" disabled>Stop</button>
+          <button id="clear-monitor" disabled>Clear</button>
+          <button class="btn-trigger" id="jank-monitor" disabled>Trigger jank</button>
+        </div>
+        <div class="panel-result" id="result-monitor">
+          <span class="hint" id="monitor-hint">Click Start to begin continuous monitoring.</span>
+        </div>
+      </section>
+
+      <!-- Before/After Comparison -->
+      <section class="panel" id="panel-compare">
+        <div class="panel-header">
+          <h2>Before / After</h2>
+          <span class="tag">compareReports</span>
+          <span class="status" data-state="idle" title="idle"></span>
+        </div>
+        <p class="panel-desc">Measures loop lag before and after a blocking operation, then diffs the reports. Negative deltas = improvement.</p>
+        <div class="panel-controls">
+          <div class="btn-group">
+            <button class="active" data-compare-scenario="cpu-block">Single block</button>
+            <button data-compare-scenario="heavy">Heavy work</button>
+          </div>
+          <span class="divider"></span>
+          <button class="btn-run" id="run-compare">Run</button>
+          <button class="btn-reset" id="reset-compare">Reset</button>
+        </div>
+        <div class="panel-result" id="result-compare">
+          <span class="hint">Select a scenario and click Run.</span>
+        </div>
+      </section>
+
+    </main>
+
+    <script type="module">
+      import {
+        EnvironmentNotSupportedError,
+        LongTaskObserver,
+        LoopMonitor,
+        compareReports,
+        measureLoopLag,
+        microtaskScheduling,
+        rafCadence,
+      } from "../dist/index.mjs";
+
+      // ── Utilities ──────────────────────────────────────────────────────────
+
+      function setStatus(panelId, state) {
+        const dot = document.querySelector(`#panel-${panelId} .status`);
+        if (dot) { dot.dataset.state = state; dot.title = state; }
+      }
+
+      function setResult(panelId, html) {
+        document.getElementById(`result-${panelId}`).innerHTML = html;
+      }
+
+      function fmt(n, decimals = 1) {
+        return `${n.toFixed(decimals)} ms`;
+      }
+
+      function barColor(value, p50) {
+        if (value > p50 * 10) return "bad";
+        if (value > p50 * 3)  return "warn";
+        return "";
+      }
+
+      function barChart(rows) {
+        const max = Math.max(...rows.map(([, v]) => v), 0.01);
+        return `<div class="chart">${rows.map(([label, value, display]) => {
+          const pct = Math.round((value / max) * 100);
+          const cls = barColor(value, rows[0][1]);
+          return `<div class="bar-row">
+            <span class="bar-label">${label}</span>
+            <div class="bar-track"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div>
+            <span class="bar-value">${display ?? fmt(value)}</span>
+          </div>`;
+        }).join("")}</div>`;
+      }
+
+      function kv(rows) {
+        return `<dl class="kv">${rows.map(([k, v]) =>
+          `<div><dt>${k}</dt><dd>${v}</dd></div>`
+        ).join("")}</dl>`;
+      }
+
+      function blockSync(ms) {
+        const end = performance.now() + ms;
+        while (performance.now() < end) {}
+      }
+
+      function sleep(ms) {
+        return new Promise((res) => setTimeout(res, ms));
+      }
+
+      function scenarioBtn(groupSelector, container) {
+        let active = container.querySelector(`${groupSelector}.active`);
+        container.querySelectorAll(groupSelector).forEach((btn) => {
+          btn.addEventListener("click", () => {
+            active?.classList.remove("active");
+            btn.classList.add("active");
+            active = btn;
+          });
+        });
+        return () => container.querySelector(`${groupSelector}.active`);
+      }
+
+      // ── Loop Lag ───────────────────────────────────────────────────────────
+
+      const lagPanel = document.getElementById("panel-lag");
+      const getLagScenario = scenarioBtn("[data-lag-scenario]", lagPanel);
+      let lagController = null;
+
+      function renderLagReport(report, note = "") {
+        return `
+          ${note ? `<p class="note">${note}</p>` : ""}
+          ${barChart([
+            ["p50", report.p50],
+            ["p95", report.p95],
+            ["p99", report.p99],
+            ["max", report.max],
+          ])}
+          ${kv([
+            ["samples", report.sampleCount.toLocaleString()],
+            ["duration", fmt(report.durationMs)],
+            ["blocked", fmt(report.blockedTimeMs)],
+            ["spikes", String(report.spikeCount)],
+          ])}`;
+      }
+
+      document.getElementById("run-lag").addEventListener("click", async () => {
+        lagController?.abort();
+        lagController = new AbortController();
+        const scenario = getLagScenario().dataset.lagScenario;
+        const ctrl = lagController;
+
+        setStatus("lag", "running");
+        setResult("lag", `<span class="running">Measuring…</span>`);
+        document.getElementById("run-lag").disabled = true;
+
+        try {
+          if (scenario === "idle") {
+            const report = await measureLoopLag({ durationMs: 2000, signal: ctrl.signal });
+            setResult("lag", renderLagReport(report));
+          } else if (scenario === "cpu-block") {
+            const measure = measureLoopLag({ durationMs: 2000, signal: ctrl.signal });
+            await sleep(600);
+            if (!ctrl.signal.aborted) blockSync(200);
+            const report = await measure;
+            setResult("lag", renderLagReport(report, "Included a 200 ms sync block at t=600ms"));
+          } else {
+            const measure = measureLoopLag({ durationMs: 3500, signal: ctrl.signal });
+            for (let i = 0; i < 5; i++) {
+              await sleep(500);
+              if (ctrl.signal.aborted) break;
+              blockSync(50);
+            }
+            const report = await measure;
+            setResult("lag", renderLagReport(report, "5 × 50 ms blocks spread across 3.5 s"));
+          }
+          if (!ctrl.signal.aborted) setStatus("lag", "done");
+        } catch {
+          if (!ctrl.signal.aborted) {
+            setStatus("lag", "error");
+            setResult("lag", `<span class="error-msg">Measurement failed.</span>`);
+          }
+        } finally {
+          document.getElementById("run-lag").disabled = false;
+        }
+      });
+
+      document.getElementById("reset-lag").addEventListener("click", () => {
+        lagController?.abort();
+        setStatus("lag", "idle");
+        setResult("lag", `<span class="hint">Select a scenario and click Run.</span>`);
+        document.getElementById("run-lag").disabled = false;
+      });
+
+      // ── Long Tasks ─────────────────────────────────────────────────────────
+
+      let ltObserver = null;
+      let ltTimeout = null;
+      let ltObserving = false;
+      let ltManualBlocks = [];
+
+      function renderLongTasks(poEntries) {
+        const manual = ltManualBlocks;
+        if (poEntries.length > 0) {
+          return `
+            ${kv([["collected by observer", String(poEntries.length)], ["total blocked", fmt(poEntries.reduce((s, e) => s + e.duration, 0))]])}
+            <div class="task-list">${poEntries.map((e) =>
+              `<div class="task-entry">
+                <span class="task-dur">${e.duration.toFixed(0)} ms</span>
+                <span class="task-start">t=${e.startTime.toFixed(0)} ms</span>
+              </div>`
+            ).join("")}</div>`;
+        }
+        if (manual.length > 0) {
+          return `
+            ${kv([["triggered", String(manual.length)], ["observer captured", "0"]])}
+            <p class="note" style="margin-top:0.5rem">Blocks ran (${manual.map((d) => d.toFixed(0) + " ms").join(", ")}) but the longtask PerformanceObserver did not report them — this can happen in some browsers or configurations.</p>`;
+        }
+        return `${kv([["collected", "0"]])}<p class="hint" style="margin-top:0.5rem">No tasks ≥ 50 ms observed. Click "Trigger 200ms block" during the next run.</p>`;
+      }
+
+      try {
+        ltObserver = new LongTaskObserver({ threshold: 50 });
+
+        document.getElementById("run-lt").addEventListener("click", () => {
+          if (ltTimeout) return;
+          ltManualBlocks = [];
+          ltObserver.clear();
+          ltObserver.start();
+          ltObserving = true;
+          setStatus("lt", "running");
+          setResult("lt", `<span class="running">Observing for 5 s — click "Trigger 200ms block" to generate long tasks.</span>`);
+          document.getElementById("run-lt").disabled = true;
+          document.getElementById("trigger-lt").disabled = false;
+
+          ltTimeout = setTimeout(() => {
+            ltTimeout = null;
+            document.getElementById("trigger-lt").disabled = true;
+            setTimeout(() => {
+              ltObserving = false;
+              ltObserver.stop();
+              setStatus("lt", "done");
+              setResult("lt", renderLongTasks([...ltObserver]));
+              document.getElementById("run-lt").disabled = false;
+            }, 250);
+          }, 5000);
+        });
+
+        document.getElementById("trigger-lt").addEventListener("click", () => {
+          const btn = document.getElementById("trigger-lt");
+          btn.textContent = "Blocking…";
+          btn.disabled = true;
+          // RAF guarantees "Blocking…" is painted; setTimeout makes the block a
+          // proper task-queue entry visible to the longtask PerformanceObserver.
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              const t0 = performance.now();
+              blockSync(200);
+              const duration = performance.now() - t0;
+              ltManualBlocks.push(duration);
+              btn.textContent = "Trigger 200ms block";
+              btn.disabled = false;
+              if (ltObserving) {
+                const n = ltManualBlocks.length;
+                document.getElementById("result-lt").innerHTML =
+                  `<span class="running">Observing… <b style="color:var(--green)">${n} block${n === 1 ? "" : "s"} triggered (${duration.toFixed(0)} ms)</b> — click Trigger to add more.</span>`;
+              }
+            }, 0);
+          });
+        });
+
+      } catch (err) {
+        if (err instanceof EnvironmentNotSupportedError) {
+          setResult("lt", `<span class="unsupported">Not supported in this environment — the longtask PerformanceObserver entry type is unavailable.</span>`);
+          document.getElementById("run-lt").disabled = true;
+          document.getElementById("trigger-lt").disabled = true;
+        }
+      }
+
+      document.getElementById("reset-lt").addEventListener("click", () => {
+        if (ltTimeout) { clearTimeout(ltTimeout); ltTimeout = null; }
+        ltObserving = false;
+        ltManualBlocks = [];
+        ltObserver?.stop();
+        ltObserver?.clear();
+        setStatus("lt", "idle");
+        setResult("lt", `<span class="hint">Click Observe, then trigger blocks during the window.</span>`);
+        document.getElementById("run-lt").disabled = false;
+        document.getElementById("trigger-lt").disabled = true;
+      });
+
+      // ── Microtask Scheduling ───────────────────────────────────────────────
+
+      let microController = null;
+
+      document.getElementById("run-micro").addEventListener("click", async () => {
+        microController?.abort();
+        microController = new AbortController();
+        const ctrl = microController;
+
+        setStatus("micro", "running");
+        document.getElementById("run-micro").disabled = true;
+
+        try {
+          const report = await microtaskScheduling({ count: 100, signal: ctrl.signal });
+          if (ctrl.signal.aborted) return;
+
+          const orderOk = report.microtasksFlushedFirst;
+          setStatus("micro", "done");
+          setResult("micro", `
+            ${barChart([
+              ["queueMicrotask", report.microtaskMeanLagMs],
+              ["setTimeout(0)", report.macrotaskMeanLagMs],
+            ])}
+            ${kv([
+              ["pairs run", String(report.count)],
+              ["drain order", orderOk ? "microtask → macrotask ✓" : "order violated ✗"],
+            ])}`);
+        } catch {
+          if (!ctrl.signal.aborted) {
+            setStatus("micro", "error");
+            setResult("micro", `<span class="error-msg">Measurement failed.</span>`);
+          }
+        } finally {
+          document.getElementById("run-micro").disabled = false;
+        }
+      });
+
+      document.getElementById("reset-micro").addEventListener("click", () => {
+        microController?.abort();
+        setStatus("micro", "idle");
+        setResult("micro", `<span class="hint">Click Run to schedule 100 microtask/macrotask pairs.</span>`);
+        document.getElementById("run-micro").disabled = false;
+      });
+
+      // ── RAF Cadence ────────────────────────────────────────────────────────
+
+      const rafPanel = document.getElementById("panel-raf");
+      const getRafScenario = scenarioBtn("[data-raf-scenario]", rafPanel);
+      let rafController = null;
+      let pressureHandle = null;
+
+      function stopPressure() {
+        if (pressureHandle !== null) { cancelAnimationFrame(pressureHandle); pressureHandle = null; }
+      }
+
+      function startPressure() {
+        function heavyFrame() {
+          blockSync(8);
+          pressureHandle = requestAnimationFrame(heavyFrame);
+        }
+        pressureHandle = requestAnimationFrame(heavyFrame);
+      }
+
+      function renderRafReport(report, note = "") {
+        return `
+          ${note ? `<p class="note">${note}</p>` : ""}
+          ${barChart([
+            ["mean", report.meanFrameTimeMs],
+            ["p95",  report.p95FrameTimeMs],
+            ["p99",  report.p99FrameTimeMs],
+          ])}
+          ${kv([
+            ["fps", report.estimatedFps.toFixed(1)],
+            ["frames", String(report.frameCount)],
+            ["dropped", String(report.droppedFrames)],
+            ["duration", fmt(report.durationMs)],
+          ])}`;
+      }
+
+      document.getElementById("run-raf").addEventListener("click", async () => {
+        rafController?.abort();
+        stopPressure();
+        rafController = new AbortController();
+        const ctrl = rafController;
+        const scenario = getRafScenario().dataset.rafScenario;
+
+        setStatus("raf", "running");
+        setResult("raf", `<span class="running">Measuring…</span>`);
+        document.getElementById("run-raf").disabled = true;
+
+        try {
+          if (scenario === "pressure") startPressure();
+          const report = await rafCadence({ durationMs: 2000, signal: ctrl.signal });
+          stopPressure();
+          if (ctrl.signal.aborted) return;
+          setStatus("raf", "done");
+          const note = scenario === "pressure" ? "Measured with ~8 ms/frame sync work applied as animation pressure" : "";
+          setResult("raf", renderRafReport(report, note));
+        } catch {
+          stopPressure();
+          if (!ctrl.signal.aborted) {
+            setStatus("raf", "error");
+            setResult("raf", `<span class="error-msg">Measurement failed.</span>`);
+          }
+        } finally {
+          document.getElementById("run-raf").disabled = false;
+        }
+      });
+
+      document.getElementById("reset-raf").addEventListener("click", () => {
+        rafController?.abort();
+        stopPressure();
+        setStatus("raf", "idle");
+        setResult("raf", `<span class="hint">Select a scenario and click Run.</span>`);
+        document.getElementById("run-raf").disabled = false;
+      });
+
+      // ── LoopMonitor ────────────────────────────────────────────────────────
+
+      const MONITOR_INTERVAL = 2000;
+      let monitor = null;
+      let monitorRunning = false;
+      let reportCount = 0;
+      let jankCount = 0;
+      let lastReportAt = 0;
+
+      function renderMonitorReport(report) {
+        lastReportAt = Date.now();
+        reportCount++;
+        if (report.isJanky) jankCount++;
+        document.getElementById("result-monitor").innerHTML = `
+          <div class="monitor-meta">
+            <span>reports: <b>${reportCount}</b></span>
+            <span>jank events: <b>${jankCount}</b></span>
+            <span>long tasks this cycle: <b>${report.longTasks.length}</b></span>
+            ${report.isJanky ? `<span class="jank-badge">⚠ janky</span>` : ""}
+          </div>
+          ${barChart([
+            ["lag p50", report.lag.p50],
+            ["lag p99", report.lag.p99],
+            ["frame p95", report.raf.p95FrameTimeMs],
+          ])}
+          ${kv([
+            ["fps", report.raf.estimatedFps.toFixed(1)],
+            ["dropped", String(report.raf.droppedFrames)],
+            ["blocked", fmt(report.lag.blockedTimeMs)],
+            ["spikes", String(report.lag.spikeCount)],
+          ])}`;
+      }
+
+      try {
+        monitor = new LoopMonitor({
+          intervalMs: MONITOR_INTERVAL,
+          lagDurationMs: 400,
+          rafDurationMs: 300,
+          lagThresholdMs: 50,
+          droppedFrameThreshold: 0,
+          onReport: renderMonitorReport,
+          onJank: () => {},
+        });
+
+        document.getElementById("start-monitor").addEventListener("click", () => {
+          reportCount = 0;
+          jankCount = 0;
+          lastReportAt = 0;
+          monitorRunning = true;
+          monitor.start();
+          setStatus("monitor", "running");
+          document.getElementById("result-monitor").innerHTML =
+            `<span class="running">First report arrives in ~${((MONITOR_INTERVAL / 1000) * 0.5).toFixed(1)} s…</span>`;
+          document.getElementById("start-monitor").disabled = true;
+          document.getElementById("stop-monitor").disabled = false;
+          document.getElementById("clear-monitor").disabled = false;
+          document.getElementById("jank-monitor").disabled = false;
+        });
+
+        document.getElementById("stop-monitor").addEventListener("click", () => {
+          monitorRunning = false;
+          monitor.stop();
+          setStatus("monitor", "idle");
+          document.getElementById("start-monitor").disabled = false;
+          document.getElementById("stop-monitor").disabled = true;
+          document.getElementById("jank-monitor").disabled = true;
+        });
+
+        document.getElementById("clear-monitor").addEventListener("click", () => {
+          monitor.clear();
+          reportCount = 0;
+          jankCount = 0;
+          document.getElementById("result-monitor").innerHTML =
+            `<span class="hint">Cleared. Next report arrives at the end of the current cycle.</span>`;
+        });
+
+        document.getElementById("jank-monitor").addEventListener("click", () => {
+          if (!monitorRunning) return;
+          const elapsed = lastReportAt > 0 ? Date.now() - lastReportAt : 0;
+          const msToNextWindow = Math.max(50, MONITOR_INTERVAL - elapsed) + 150;
+          setTimeout(() => blockSync(200), msToNextWindow);
+          const el = document.getElementById("result-monitor");
+          const hint = document.createElement("p");
+          hint.className = "note";
+          hint.textContent = `200 ms block scheduled for next measurement window (~${(msToNextWindow / 1000).toFixed(1)} s)`;
+          el.prepend(hint);
+          setTimeout(() => hint.remove(), msToNextWindow + 800);
+        });
+
+      } catch (err) {
+        if (err instanceof EnvironmentNotSupportedError) {
+          setResult("monitor", `<span class="unsupported">Not supported in this environment — the longtask PerformanceObserver entry type is unavailable.</span>`);
+          ["start-monitor", "stop-monitor", "clear-monitor", "jank-monitor"].forEach((id) => {
+            document.getElementById(id).disabled = true;
+          });
+        }
+      }
+
+      // ── Before / After ─────────────────────────────────────────────────────
+
+      const comparePanel = document.getElementById("panel-compare");
+      const getCompareScenario = scenarioBtn("[data-compare-scenario]", comparePanel);
+      let compareController = null;
+
+      function sign(n) { return n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1); }
+      function deltaClass(n) { return n > 0.5 ? "worse" : n < -0.5 ? "better" : "neutral"; }
+
+      function renderComparison(before, after, delta) {
+        const rows = [
+          ["p50",      before.p50,           after.p50,           delta.p50Delta,           "ms"],
+          ["p95",      before.p95,           after.p95,           delta.p95Delta,           "ms"],
+          ["p99",      before.p99,           after.p99,           delta.p99Delta,           "ms"],
+          ["max",      before.max,           after.max,           delta.maxDelta,           "ms"],
+          ["blocked",  before.blockedTimeMs, after.blockedTimeMs, delta.blockedTimeMsDelta, "ms"],
+          ["spikes",   before.spikeCount,    after.spikeCount,    delta.spikeCountDelta,    ""],
+        ];
+        return `<div class="compare-wrap"><table>
+          <thead><tr><th>metric</th><th>before</th><th>after</th><th>delta</th></tr></thead>
+          <tbody>${rows.map(([label, b, a, d, unit]) => `
+            <tr>
+              <td>${label}</td>
+              <td>${typeof b === "number" && b % 1 !== 0 ? b.toFixed(1) : b}${unit}</td>
+              <td>${typeof a === "number" && a % 1 !== 0 ? a.toFixed(1) : a}${unit}</td>
+              <td class="${deltaClass(d)}">${sign(d)}${unit}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table></div>`;
+      }
+
+      document.getElementById("run-compare").addEventListener("click", async () => {
+        compareController?.abort();
+        compareController = new AbortController();
+        const ctrl = compareController;
+        const scenario = getCompareScenario().dataset.compareScenario;
+
+        setStatus("compare", "running");
+        document.getElementById("run-compare").disabled = true;
+
+        try {
+          setResult("compare", `<span class="running">Measuring baseline…</span>`);
+          const before = await measureLoopLag({ durationMs: 500, signal: ctrl.signal });
+          if (ctrl.signal.aborted) return;
+
+          if (scenario === "cpu-block") {
+            setResult("compare", `<span class="running">Blocking thread (150 ms)…</span>`);
+            blockSync(150);
+          } else {
+            setResult("compare", `<span class="running">Running heavy work (3 × 80 ms)…</span>`);
+            for (let i = 0; i < 3; i++) {
+              blockSync(80);
+              await sleep(40);
+              if (ctrl.signal.aborted) return;
+            }
+          }
+
+          setResult("compare", `<span class="running">Measuring after…</span>`);
+          const after = await measureLoopLag({ durationMs: 500, signal: ctrl.signal });
+          if (ctrl.signal.aborted) return;
+
+          setStatus("compare", "done");
+          setResult("compare", renderComparison(before, after, compareReports(before, after)));
+        } catch {
+          if (!ctrl.signal.aborted) {
+            setStatus("compare", "error");
+            setResult("compare", `<span class="error-msg">Measurement failed.</span>`);
+          }
+        } finally {
+          document.getElementById("run-compare").disabled = false;
+        }
+      });
+
+      document.getElementById("reset-compare").addEventListener("click", () => {
+        compareController?.abort();
+        setStatus("compare", "idle");
+        setResult("compare", `<span class="hint">Select a scenario and click Run.</span>`);
+        document.getElementById("run-compare").disabled = false;
+      });
+    </script>
+  </body>
+</html>
