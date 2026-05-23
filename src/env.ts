@@ -6,6 +6,15 @@ export function hasPerformanceObserver(): boolean {
   return typeof PerformanceObserver === "function";
 }
 
+export function hasLongTaskSupport(): boolean {
+  if (!hasPerformanceObserver()) return false;
+  const { supportedEntryTypes } = PerformanceObserver;
+  if (Array.isArray(supportedEntryTypes)) {
+    return supportedEntryTypes.includes("longtask");
+  }
+  return true;
+}
+
 export function hasRequestAnimationFrame(): boolean {
   return typeof requestAnimationFrame === "function";
 }

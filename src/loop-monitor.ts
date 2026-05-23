@@ -1,5 +1,6 @@
 import {
   EnvironmentNotSupportedError,
+  hasLongTaskSupport,
   hasPerformanceNow,
   hasPerformanceObserver,
   hasRequestAnimationFrame,
@@ -53,6 +54,9 @@ export class LoopMonitor {
     }
     if (!hasPerformanceObserver()) {
       throw new EnvironmentNotSupportedError("PerformanceObserver");
+    }
+    if (!hasLongTaskSupport()) {
+      throw new EnvironmentNotSupportedError("PerformanceObserver type 'longtask'");
     }
 
     this._intervalMs = options?.intervalMs ?? 5000;

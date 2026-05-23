@@ -1,4 +1,4 @@
-import { EnvironmentNotSupportedError, hasPerformanceObserver } from "./env";
+import { EnvironmentNotSupportedError, hasLongTaskSupport, hasPerformanceObserver } from "./env";
 import { assertPositiveFinite } from "./validation";
 
 export interface LongTaskOptions {
@@ -16,6 +16,9 @@ export class LongTaskObserver implements Iterable<PerformanceEntry> {
     if (!hasPerformanceObserver()) {
       throw new EnvironmentNotSupportedError("PerformanceObserver");
     }
+    if (!hasLongTaskSupport()) {
+      throw new EnvironmentNotSupportedError("PerformanceObserver type 'longtask'");
+    }
     this._threshold = options?.threshold ?? 50;
     assertPositiveFinite(this._threshold, "threshold");
 
@@ -24,6 +27,10 @@ export class LongTaskObserver implements Iterable<PerformanceEntry> {
 
   start(): void {
     this.stop();
+
+    if (!hasLongTaskSupport()) {
+      throw new EnvironmentNotSupportedError("PerformanceObserver type 'longtask'");
+    }
 
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
