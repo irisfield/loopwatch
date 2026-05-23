@@ -15,12 +15,17 @@ export function hasLongTaskSupport(): boolean {
   return true;
 }
 
-export function hasRequestAnimationFrame(): boolean {
-  return typeof requestAnimationFrame === "function";
+export function hasLongAnimationFrameSupport(): boolean {
+  if (!hasPerformanceObserver()) return false;
+  const { supportedEntryTypes } = PerformanceObserver;
+  if (Array.isArray(supportedEntryTypes)) {
+    return supportedEntryTypes.includes("long-animation-frame");
+  }
+  return false;
 }
 
-export function hasQueueMicrotask(): boolean {
-  return typeof queueMicrotask === "function";
+export function hasRequestAnimationFrame(): boolean {
+  return typeof requestAnimationFrame === "function";
 }
 
 export class EnvironmentNotSupportedError extends Error {
