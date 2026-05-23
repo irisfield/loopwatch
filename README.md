@@ -4,7 +4,7 @@ A tiny TypeScript library that measures JavaScript event-loop responsiveness in 
 
 ## Why
 
-Every frontend bottleneck traces back to event-loop contention. Tools like `web-vitals` measure user-facing symptoms (LCP, INP, CLS) but not the underlying mechanic. `loopwatch` measures the mechanic directly. How long does `setTimeout(0)` actually wait? When do microtasks flush relative to macrotasks? What is the real RAF cadence on this display? Are long tasks blocking the main thread?
+Every frontend bottleneck traces back to event-loop contention. Tools like `web-vitals` measure user-facing symptoms (LCP, INP, CLS) but not the underlying mechanic. `loopwatch` measures the mechanic directly: you wrap the suspect work and the library reports what happened to the loop while it ran — lag distribution, frame cadence, long tasks, and the worst contiguous window of blockage.
 
 ## Install
 
@@ -16,32 +16,33 @@ npm install loopwatch
 
 ### `measureLoopLag`
 
-Fires `setTimeout(0)` repeatedly for the given duration and records how long each callback was delayed from when it was scheduled. A healthy, idle event loop delivers callbacks in 1-4 ms. If your code is doing expensive synchronous work (parsing, layout, large array operations), those delays accumulate and show up as spikes in the lag distribution.
+Wraps any function — sync or async — and measures event-loop health while it runs. Fires `setTimeout(0)` concurrently to sample lag, collects `requestAnimationFrame` intervals, and observes long tasks. Returns a `LoopMeasurement<T>` when `fn` resolves.
 
 ```typescript
 import { measureLoopLag } from "loopwatch";
 
-// Sample the event loop for 2 seconds
-const report = await measureLoopLag({ durationMs: 2000 });
+const m = await measureLoopLag(async () => {
+  await processCartItems(cart);
+});
 
-// report.sampleCount  — number of setTimeout(0) round-trips recorded (typically 1000+)
-// report.p50          — median lag in ms; below 2ms is healthy
-// report.p99          — worst-case lag for 99% of samples; above 50ms means the thread is blocked
-// report.max          — single worst spike observed during the sample window
+// m.value              — the return value of fn
+// m.durationMs         — total wall time fn ran
+// m.lag.p50            — median setTimeout(0) delay; below 2 ms is healthy
+// m.lag.p99            — tail lag; above 50 ms means the thread was blocked
+// m.lag.blockedTimeMs  — total time spent in spikes >= 50 ms
+// m.longTasks.count    — tasks that held the main thread >= 50 ms
+// m.raf.estimatedFps   — frame delivery rate while fn ran
+// m.raf.droppedFrames  — frames that took more than 1.5× the median
+// m.worstWindow        — the 500 ms window with the highest blocked time
 ```
 
-`durationMs` must be a positive finite number. Invalid values throw `RangeError`.
+If `fn` throws, the error is rethrown with a `.measurement` property attached so you can inspect loop state at the moment of failure.
 
-Call it before and after a user action to see how much that action blocks the main thread.
+Pass `signal` to cancel mid-run:
 
 ```typescript
-const before = await measureLoopLag({ durationMs: 500 });
-runExpensiveOperation();
-const after = await measureLoopLag({ durationMs: 500 });
-
-if (after.p99 > before.p99 * 3) {
-  console.warn("runExpensiveOperation is blocking the event loop");
-}
+const controller = new AbortController();
+const m = await measureLoopLag(() => longRunningWork(), { signal: controller.signal });
 ```
 
 ---
@@ -75,67 +76,20 @@ A single 100 ms long task drops roughly 6 frames at 60 Hz and makes the page fee
 
 ---
 
-### `microtaskScheduling`
-
-Schedules microtasks (`queueMicrotask`) and macrotasks (`setTimeout(0)`) interleaved, then measures when each fires. The result tells you how fast each scheduling mechanism resolves and whether microtasks correctly drain before macrotasks, which the spec requires.
-
-```typescript
-import { microtaskScheduling } from "loopwatch";
-
-const report = await microtaskScheduling({ count: 100 });
-
-// report.microtaskMeanLagMs    — how long queueMicrotask callbacks wait; typically < 0.1 ms
-// report.macrotaskMeanLagMs    — how long setTimeout(0) callbacks wait; typically 0.5-4 ms
-// report.microtasksFlushedFirst — true in any spec-compliant runtime (all microtasks
-//                                 drain before the first macrotask runs)
-
-// If macrotaskMeanLagMs is above ~4 ms, the task queue is backed up.
-// If microtasksFlushedFirst is false, something is wrong with the runtime.
-```
-
-`count` must be a positive integer. Invalid values throw `RangeError`. Pass an `AbortSignal` as `signal` to resolve early.
-
----
-
-### `rafCadence`
-
-Measures actual frame delivery over a time window using `requestAnimationFrame`. `estimatedFps` alone does not tell you whether frames are arriving evenly or in bursts. The full report does.
-
-```typescript
-import { rafCadence } from "loopwatch";
-
-const report = await rafCadence(2000);
-
-// report.estimatedFps      — computed from mean frame time; does not assume 60 Hz
-// report.meanFrameTimeMs   — average ms per frame (16.67 ms = 60 fps, 11.11 ms = 90 fps)
-// report.p95FrameTimeMs    — 95th-percentile frame time; a proxy for "typical worst frame"
-// report.droppedFrames     — frames that took more than 1.5× the median frame time
-//
-// Healthy animation: droppedFrames === 0, p95 close to meanFrameTimeMs.
-// Janky animation:   droppedFrames > 0 or p95 >> meanFrameTimeMs.
-```
-
-Pass `{ durationMs, signal }` instead of a number when you need cancellation. `durationMs` must be a positive finite number; invalid values throw `RangeError`.
-
-If `droppedFrames` is non-zero while nothing appears to be running, a background task is stealing render time.
-
----
-
 ### `LoopMonitor`
 
-Runs loop lag, RAF cadence, and long-task collection on a repeating cycle. Use it when you want ongoing app-level telemetry instead of a one-off probe.
+Runs `measureLoopLag` on a repeating cycle. Use it when you want ongoing app-level telemetry instead of a one-off probe.
 
 ```typescript
 import { LoopMonitor } from "loopwatch";
 
 const monitor = new LoopMonitor({
-  intervalMs: 5000,
-  lagDurationMs: 500,
-  rafDurationMs: 500,
+  intervalMs: 5000,      // wait between cycles
+  sampleDurationMs: 500, // how long to measure each cycle
   lagThresholdMs: 50,
   droppedFrameThreshold: 0,
   onReport: (report) => {
-    console.log(report.lag.p99, report.raf.droppedFrames, report.longTasks.length);
+    console.log(report.lag.p99, report.raf.droppedFrames, report.longTasks.count);
   },
   onJank: (report) => {
     console.warn("event loop jank", report);
@@ -149,7 +103,27 @@ const latest = monitor.snapshot();
 monitor.stop();
 ```
 
-`start()` and `stop()` are idempotent. `stop()` aborts the active sampling cycle and prevents later callbacks from firing. `clear()` removes the last report and clears buffered long tasks.
+`start()` and `stop()` are idempotent. `stop()` aborts the active sampling cycle and prevents later callbacks from firing. `clear()` removes the last report.
+
+---
+
+### `compareReports`
+
+Diffs two `LoopMeasurement` objects. Returns a `LoopMeasurementDelta` with nested `lag`, `longTasks`, and `raf` sub-objects.
+
+```typescript
+import { compareReports, measureLoopLag } from "loopwatch";
+
+const before = await measureLoopLag(() => sleep(500));
+runExpensiveOperation();
+const after = await measureLoopLag(() => sleep(500));
+
+const delta = compareReports(before, after);
+// delta.lag.p99Delta           — change in tail lag
+// delta.lag.blockedTimeMsDelta — change in total blocked time
+// delta.lag.spikeCountDelta    — change in threshold crossings
+// delta.raf.droppedFramesDelta — change in dropped frames
+```
 
 ---
 
@@ -157,18 +131,18 @@ monitor.stop();
 
 ### Debug a slow click
 
-Wrap the suspect handler with before/after lag samples to isolate which operation is blocking the thread:
+Wrap the suspect handler to isolate which operation is blocking the thread:
 
 ```typescript
 import { compareReports, measureLoopLag } from "loopwatch";
 
 button.addEventListener("click", async () => {
-  const before = await measureLoopLag({ durationMs: 200 });
+  const before = await measureLoopLag(() => sleep(200));
   processCartItems(cart);
-  const after = await measureLoopLag({ durationMs: 200 });
+  const after = await measureLoopLag(() => sleep(200));
 
   const delta = compareReports(before, after);
-  if (delta.p99Delta > 30 || delta.blockedTimeMsDelta > 0) {
+  if (delta.lag.p99Delta > 30 || delta.lag.blockedTimeMsDelta > 0) {
     console.warn("processCartItems is blocking the event loop", delta);
   }
 });
@@ -179,14 +153,14 @@ button.addEventListener("click", async () => {
 ```typescript
 import { compareReports, measureLoopLag } from "loopwatch";
 
-const before = await measureLoopLag({ durationMs: 500 });
+const before = await measureLoopLag(() => sleep(500));
 runExpensiveOperation();
-const after = await measureLoopLag({ durationMs: 500 });
+const after = await measureLoopLag(() => sleep(500));
 
 const delta = compareReports(before, after);
-console.log(`p99 changed by ${delta.p99Delta.toFixed(1)} ms`);
-console.log(`blocked time changed by ${delta.blockedTimeMsDelta.toFixed(1)} ms`);
-console.log(`spike count changed by ${delta.spikeCountDelta}`);
+console.log(`p99 changed by ${delta.lag.p99Delta.toFixed(1)} ms`);
+console.log(`blocked time changed by ${delta.lag.blockedTimeMsDelta.toFixed(1)} ms`);
+console.log(`spike count changed by ${delta.lag.spikeCountDelta}`);
 ```
 
 A negative `p99Delta` means the optimization reduced tail latency. Use `spikeCountDelta` to confirm that the number of threshold crossings also dropped — `p99` alone can mask bursty behavior.
@@ -207,7 +181,7 @@ const monitor = new LoopMonitor({
       p99LagMs: report.lag.p99,
       blockedTimeMs: report.lag.blockedTimeMs,
       droppedFrames: report.raf.droppedFrames,
-      longTaskCount: report.longTasks.length,
+      longTaskCount: report.longTasks.count,
       isJanky: report.isJanky,
     });
   },
@@ -223,14 +197,14 @@ monitor.start();
 
 ### Detect background-tab throttling
 
-Browsers throttle `requestAnimationFrame` to ~1 fps (or pause it entirely) when a tab is hidden. `rafCadence` can detect this before kicking off rendering work:
+Browsers throttle `requestAnimationFrame` to ~1 fps (or pause it entirely) when a tab is hidden. Check `raf.estimatedFps` from a short measurement before kicking off rendering work:
 
 ```typescript
-import { rafCadence } from "loopwatch";
+import { measureLoopLag } from "loopwatch";
 
 async function isTabThrottled(): Promise<boolean> {
-  const { estimatedFps } = await rafCadence({ durationMs: 300 });
-  return estimatedFps < 5;
+  const { raf } = await measureLoopLag(() => sleep(300));
+  return raf.estimatedFps < 5;
 }
 
 document.addEventListener("visibilitychange", async () => {
@@ -254,26 +228,23 @@ loopwatch measures only event-loop and rendering timing. It does not collect, tr
 
 ## Browser support
 
-| API                     | Required by           | Notes                                                       |
-| ----------------------- | --------------------- | ----------------------------------------------------------- |
-| `performance.now`       | All exports           | Universal in modern browsers                                |
-| `setTimeout`            | `measureLoopLag`      | Universal                                                   |
-| `requestAnimationFrame` | `rafCadence`, `LoopMonitor` | Universal                                                   |
-| `PerformanceObserver`   | `LongTaskObserver`, `LoopMonitor` | Chrome, Edge, Firefox; `'longtask'` not supported in Safari |
-| `queueMicrotask`        | `microtaskScheduling` | All modern browsers                                         |
+| API                     | Required by                       | Notes                                                       |
+| ----------------------- | --------------------------------- | ----------------------------------------------------------- |
+| `performance.now`       | All exports                       | Universal in modern browsers                                |
+| `setTimeout`            | `measureLoopLag`                  | Universal                                                   |
+| `requestAnimationFrame` | `measureLoopLag`, `LoopMonitor`   | Universal                                                   |
+| `PerformanceObserver`   | `LongTaskObserver`, `measureLoopLag` (long tasks) | Chrome, Edge, Firefox; `'longtask'` not supported in Safari |
 
 When a required API is missing, the relevant export throws `EnvironmentNotSupportedError`.
 
 ### Safari
 
-Safari does not implement the `longtask` `PerformanceObserver` entry type (as of Safari 17). This affects:
+Safari does not implement the `longtask` `PerformanceObserver` entry type (as of Safari 17). This means:
 
 - `LongTaskObserver` — throws `EnvironmentNotSupportedError` on construction in Safari.
-- `LoopMonitor` — also throws `EnvironmentNotSupportedError` because it depends on `LongTaskObserver` internally.
+- `measureLoopLag` and `LoopMonitor` — still work in Safari; lag sampling and RAF cadence are unaffected. Long-task entries will be empty (`longTasks.count === 0`) because neither `longtask` nor `long-animation-frame` is available.
 
-`measureLoopLag`, `rafCadence`, and `microtaskScheduling` work in all modern browsers including Safari.
-
-To support Safari alongside Chrome/Edge/Firefox, guard long-task features with a try/catch:
+To use `LongTaskObserver` safely across browsers:
 
 ```typescript
 import { EnvironmentNotSupportedError, LongTaskObserver } from "loopwatch";
@@ -283,7 +254,7 @@ try {
   observer.start();
 } catch (err) {
   if (!(err instanceof EnvironmentNotSupportedError)) throw err;
-  // long-task detection not available in this browser
+  // long-task detection not available in this environment
 }
 ```
 
@@ -293,7 +264,7 @@ try {
 
 ## Bundle size
 
-`dist/index.min.mjs`: 3.1 KB minified · 1.3 KB gzipped
+`dist/index.min.mjs`: 7.8 KB minified · 2.9 KB gzipped
 
 ## Development
 
@@ -314,7 +285,7 @@ bun run build
 bunx serve .
 ```
 
-Open `http://localhost:3000/examples/index.html`. Each panel runs independently — select a scenario, click Run, and results appear inline. The page covers all six APIs with scenario controls that create different event-loop conditions: idle baseline, CPU block, repeated blocks, animation pressure, and before/after comparison.
+Open `http://localhost:3000/examples/index.html`. Each panel runs independently — select a scenario, click Run, and results appear inline. The page covers all four APIs with scenario controls that create different event-loop conditions: idle baseline, CPU block, repeated blocks, and before/after comparison.
 
 ## License
 
