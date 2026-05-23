@@ -1,14 +1,35 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   EnvironmentNotSupportedError,
+  hasLongAnimationFrameSupport,
+  hasLongTaskSupport,
   hasPerformanceNow,
   hasPerformanceObserver,
-  hasQueueMicrotask,
   hasRequestAnimationFrame,
 } from "../src/env";
 
+class MockPerformanceObserver implements PerformanceObserver {
+  static supportedEntryTypes: string[] = [];
+  observe = vi.fn<PerformanceObserver["observe"]>();
+  disconnect = vi.fn<PerformanceObserver["disconnect"]>();
+  takeRecords(): PerformanceEntryList {
+    return [];
+  }
+  // no-op constructor satisfies PerformanceObserver interface shape for tests
+}
+
+function stubPOWithTypes(types: string[]): void {
+  MockPerformanceObserver.supportedEntryTypes = types;
+  vi.stubGlobal("PerformanceObserver", MockPerformanceObserver);
+}
+
 describe("env guards", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    MockPerformanceObserver.supportedEntryTypes = [];
+  });
+
   it("hasPerformanceNow returns true in happy-dom", () => {
     expect(hasPerformanceNow()).toBe(true);
   });
@@ -21,8 +42,33 @@ describe("env guards", () => {
     expect(hasRequestAnimationFrame()).toBe(true);
   });
 
-  it("hasQueueMicrotask returns true in happy-dom", () => {
-    expect(hasQueueMicrotask()).toBe(true);
+  it("hasLongTaskSupport returns false when supportedEntryTypes is present but excludes longtask", () => {
+    // happy-dom exposes supportedEntryTypes but it does not include "longtask"
+    expect(hasLongTaskSupport()).toBe(false);
+  });
+
+  it("hasLongTaskSupport returns false when supportedEntryTypes excludes longtask", () => {
+    stubPOWithTypes(["long-animation-frame"]);
+    expect(hasLongTaskSupport()).toBe(false);
+  });
+
+  it("hasLongTaskSupport returns true when supportedEntryTypes includes longtask", () => {
+    stubPOWithTypes(["longtask"]);
+    expect(hasLongTaskSupport()).toBe(true);
+  });
+
+  it("hasLongAnimationFrameSupport returns false when supportedEntryTypes excludes it", () => {
+    expect(hasLongAnimationFrameSupport()).toBe(false);
+  });
+
+  it("hasLongAnimationFrameSupport returns true when supportedEntryTypes includes long-animation-frame", () => {
+    stubPOWithTypes(["long-animation-frame"]);
+    expect(hasLongAnimationFrameSupport()).toBe(true);
+  });
+
+  it("hasLongAnimationFrameSupport returns false when supportedEntryTypes excludes it", () => {
+    stubPOWithTypes(["longtask"]);
+    expect(hasLongAnimationFrameSupport()).toBe(false);
   });
 });
 
