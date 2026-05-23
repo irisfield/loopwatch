@@ -8,7 +8,7 @@
   <body>
     <main>loopwatch browser smoke</main>
     <script type="module">
-      import { LongTaskObserver, measureLoopLag, rafCadence } from "/dist/index.mjs";
+      import { LongTaskObserver, measureLoopLag } from "/dist/index.mjs";
 
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -21,7 +21,12 @@
 
       window.loopwatchSmoke = {
         async raf() {
-          return rafCadence({ durationMs: 120 });
+          const m = await measureLoopLag(() => sleep(120));
+          return {
+            frameCount: m.raf.frameCount,
+            estimatedFps: m.raf.estimatedFps,
+            meanFrameTimeMs: m.raf.meanFrameTimeMs,
+          };
         },
         async timeoutLag() {
           const startedAt = performance.now();
@@ -29,11 +34,16 @@
           return performance.now() - startedAt;
         },
         async blockedLag() {
-          const reportPromise = measureLoopLag({ durationMs: 180 });
-          setTimeout(() => {
+          const m = await measureLoopLag(async () => {
+            await sleep(20);
             blockMainThread(90);
-          }, 20);
-          return reportPromise;
+            await sleep(70);
+          });
+          return {
+            sampleCount: m.lag.sampleCount,
+            max: m.lag.max,
+            p95: m.lag.p95,
+          };
         },
         async longTask() {
           const observer = new LongTaskObserver({ threshold: 50 });

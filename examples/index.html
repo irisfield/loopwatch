@@ -141,7 +141,7 @@
       .note { font-size: 0.72rem; color: var(--purple); }
       .unsupported { color: var(--orange); font-size: 0.75rem; }
 
-      /* Bar chart — .chart is the grid; .bar-row uses display:contents so all rows share columns */
+      /* Bar chart */
       .chart { display: grid; grid-template-columns: max-content 1fr 4.5rem; align-items: center; column-gap: 0.5rem; row-gap: 5px; width: 100%; }
       .bar-row { display: contents; }
       .bar-label { font-size: 0.72rem; color: var(--muted); text-align: right; white-space: nowrap; }
@@ -179,7 +179,6 @@
 
       @media (max-width: 520px) {
         main { grid-template-columns: 1fr; }
-        .bar-row { grid-template-columns: 2.5rem 1fr 4rem; }
         .kv { grid-template-columns: 1fr 1fr; }
       }
     </style>
@@ -195,11 +194,11 @@
       <!-- Loop Lag -->
       <section class="panel" id="panel-lag">
         <div class="panel-header">
-          <h2>Loop Lag</h2>
+          <h2>Measure Loop Lag</h2>
           <span class="tag">measureLoopLag</span>
           <span class="status" data-state="idle" title="idle"></span>
         </div>
-        <p class="panel-desc">Measures how long setTimeout(0) callbacks are delayed. Spikes mean the main thread is blocked.</p>
+        <p class="panel-desc">Wraps a function and measures event-loop lag, RAF cadence, and long tasks while it runs. Spikes in lag mean the main thread was blocked.</p>
         <div class="panel-controls">
           <div class="btn-group">
             <button class="active" data-lag-scenario="idle">Idle</button>
@@ -234,46 +233,6 @@
         </div>
       </section>
 
-      <!-- Microtask Scheduling -->
-      <section class="panel" id="panel-micro">
-        <div class="panel-header">
-          <h2>Microtask Scheduling</h2>
-          <span class="tag">microtaskScheduling</span>
-          <span class="status" data-state="idle" title="idle"></span>
-        </div>
-        <p class="panel-desc">Interleaves queueMicrotask and setTimeout(0) calls, then measures when each fires and whether microtasks drain first.</p>
-        <div class="panel-controls">
-          <button class="btn-run" id="run-micro">Run</button>
-          <span class="divider"></span>
-          <button class="btn-reset" id="reset-micro">Reset</button>
-        </div>
-        <div class="panel-result" id="result-micro">
-          <span class="hint">Click Run to schedule 100 microtask/macrotask pairs.</span>
-        </div>
-      </section>
-
-      <!-- RAF Cadence -->
-      <section class="panel" id="panel-raf">
-        <div class="panel-header">
-          <h2>RAF Cadence</h2>
-          <span class="tag">rafCadence</span>
-          <span class="status" data-state="idle" title="idle"></span>
-        </div>
-        <p class="panel-desc">Measures actual frame delivery. Dropped frames indicate contention for the render thread.</p>
-        <div class="panel-controls">
-          <div class="btn-group">
-            <button class="active" data-raf-scenario="idle">Idle</button>
-            <button data-raf-scenario="pressure">Animation pressure</button>
-          </div>
-          <span class="divider"></span>
-          <button class="btn-run" id="run-raf">Run</button>
-          <button class="btn-reset" id="reset-raf">Reset</button>
-        </div>
-        <div class="panel-result" id="result-raf">
-          <span class="hint">Select a scenario and click Run.</span>
-        </div>
-      </section>
-
       <!-- LoopMonitor -->
       <section class="panel" id="panel-monitor">
         <div class="panel-header">
@@ -281,7 +240,7 @@
           <span class="tag">continuous</span>
           <span class="status" data-state="idle" title="idle"></span>
         </div>
-        <p class="panel-desc">Runs lag, RAF cadence, and long-task collection on a 5-second cycle. Reports continuously until stopped.</p>
+        <p class="panel-desc">Runs lag, RAF cadence, and long-task collection on a repeating cycle. Reports continuously until stopped.</p>
         <div class="panel-controls">
           <button class="btn-start" id="start-monitor">Start</button>
           <button class="btn-stop" id="stop-monitor" disabled>Stop</button>
@@ -324,8 +283,6 @@
         LoopMonitor,
         compareReports,
         measureLoopLag,
-        microtaskScheduling,
-        rafCadence,
       } from "../dist/index.mjs";
 
       // ── Utilities ──────────────────────────────────────────────────────────
@@ -395,21 +352,27 @@
       const getLagScenario = scenarioBtn("[data-lag-scenario]", lagPanel);
       let lagController = null;
 
-      function renderLagReport(report, note = "") {
+      function renderMeasurement(m, note = "") {
+        const worstNote = m.worstWindow.blockedTimeMs > 0
+          ? `<p class="note">worst 500 ms window: ${m.worstWindow.blockedTimeMs.toFixed(0)} ms blocked at t=${m.worstWindow.startMs.toFixed(0)} ms</p>`
+          : "";
         return `
           ${note ? `<p class="note">${note}</p>` : ""}
           ${barChart([
-            ["p50", report.p50],
-            ["p95", report.p95],
-            ["p99", report.p99],
-            ["max", report.max],
+            ["lag p50", m.lag.p50],
+            ["lag p95", m.lag.p95],
+            ["lag p99", m.lag.p99],
+            ["lag max", m.lag.max],
           ])}
           ${kv([
-            ["samples", report.sampleCount.toLocaleString()],
-            ["duration", fmt(report.durationMs)],
-            ["blocked", fmt(report.blockedTimeMs)],
-            ["spikes", String(report.spikeCount)],
-          ])}`;
+            ["samples",  m.lag.sampleCount.toLocaleString()],
+            ["duration", fmt(m.durationMs)],
+            ["blocked",  fmt(m.lag.blockedTimeMs)],
+            ["spikes",   String(m.lag.spikeCount)],
+            ["fps",      m.raf.estimatedFps.toFixed(1)],
+            ["dropped",  String(m.raf.droppedFrames)],
+          ])}
+          ${worstNote}`;
       }
 
       document.getElementById("run-lag").addEventListener("click", async () => {
@@ -423,24 +386,25 @@
         document.getElementById("run-lag").disabled = true;
 
         try {
+          let m;
           if (scenario === "idle") {
-            const report = await measureLoopLag({ durationMs: 2000, signal: ctrl.signal });
-            setResult("lag", renderLagReport(report));
+            m = await measureLoopLag(() => sleep(2000), { signal: ctrl.signal });
+            if (!ctrl.signal.aborted) setResult("lag", renderMeasurement(m));
           } else if (scenario === "cpu-block") {
-            const measure = measureLoopLag({ durationMs: 2000, signal: ctrl.signal });
-            await sleep(600);
-            if (!ctrl.signal.aborted) blockSync(200);
-            const report = await measure;
-            setResult("lag", renderLagReport(report, "Included a 200 ms sync block at t=600ms"));
+            m = await measureLoopLag(async () => {
+              await sleep(600);
+              blockSync(200);
+              await sleep(1200);
+            }, { signal: ctrl.signal });
+            if (!ctrl.signal.aborted) setResult("lag", renderMeasurement(m, "Included a 200 ms sync block at t≈600 ms"));
           } else {
-            const measure = measureLoopLag({ durationMs: 3500, signal: ctrl.signal });
-            for (let i = 0; i < 5; i++) {
-              await sleep(500);
-              if (ctrl.signal.aborted) break;
-              blockSync(50);
-            }
-            const report = await measure;
-            setResult("lag", renderLagReport(report, "5 × 50 ms blocks spread across 3.5 s"));
+            m = await measureLoopLag(async () => {
+              for (let i = 0; i < 5; i++) {
+                await sleep(500);
+                blockSync(50);
+              }
+            }, { signal: ctrl.signal });
+            if (!ctrl.signal.aborted) setResult("lag", renderMeasurement(m, "5 × 50 ms blocks spread across 2.5 s"));
           }
           if (!ctrl.signal.aborted) setStatus("lag", "done");
         } catch {
@@ -557,123 +521,6 @@
         document.getElementById("trigger-lt").disabled = true;
       });
 
-      // ── Microtask Scheduling ───────────────────────────────────────────────
-
-      let microController = null;
-
-      document.getElementById("run-micro").addEventListener("click", async () => {
-        microController?.abort();
-        microController = new AbortController();
-        const ctrl = microController;
-
-        setStatus("micro", "running");
-        document.getElementById("run-micro").disabled = true;
-
-        try {
-          const report = await microtaskScheduling({ count: 100, signal: ctrl.signal });
-          if (ctrl.signal.aborted) return;
-
-          const orderOk = report.microtasksFlushedFirst;
-          setStatus("micro", "done");
-          setResult("micro", `
-            ${barChart([
-              ["queueMicrotask", report.microtaskMeanLagMs],
-              ["setTimeout(0)", report.macrotaskMeanLagMs],
-            ])}
-            ${kv([
-              ["pairs run", String(report.count)],
-              ["drain order", orderOk ? "microtask → macrotask ✓" : "order violated ✗"],
-            ])}`);
-        } catch {
-          if (!ctrl.signal.aborted) {
-            setStatus("micro", "error");
-            setResult("micro", `<span class="error-msg">Measurement failed.</span>`);
-          }
-        } finally {
-          document.getElementById("run-micro").disabled = false;
-        }
-      });
-
-      document.getElementById("reset-micro").addEventListener("click", () => {
-        microController?.abort();
-        setStatus("micro", "idle");
-        setResult("micro", `<span class="hint">Click Run to schedule 100 microtask/macrotask pairs.</span>`);
-        document.getElementById("run-micro").disabled = false;
-      });
-
-      // ── RAF Cadence ────────────────────────────────────────────────────────
-
-      const rafPanel = document.getElementById("panel-raf");
-      const getRafScenario = scenarioBtn("[data-raf-scenario]", rafPanel);
-      let rafController = null;
-      let pressureHandle = null;
-
-      function stopPressure() {
-        if (pressureHandle !== null) { cancelAnimationFrame(pressureHandle); pressureHandle = null; }
-      }
-
-      function startPressure() {
-        function heavyFrame() {
-          blockSync(8);
-          pressureHandle = requestAnimationFrame(heavyFrame);
-        }
-        pressureHandle = requestAnimationFrame(heavyFrame);
-      }
-
-      function renderRafReport(report, note = "") {
-        return `
-          ${note ? `<p class="note">${note}</p>` : ""}
-          ${barChart([
-            ["mean", report.meanFrameTimeMs],
-            ["p95",  report.p95FrameTimeMs],
-            ["p99",  report.p99FrameTimeMs],
-          ])}
-          ${kv([
-            ["fps", report.estimatedFps.toFixed(1)],
-            ["frames", String(report.frameCount)],
-            ["dropped", String(report.droppedFrames)],
-            ["duration", fmt(report.durationMs)],
-          ])}`;
-      }
-
-      document.getElementById("run-raf").addEventListener("click", async () => {
-        rafController?.abort();
-        stopPressure();
-        rafController = new AbortController();
-        const ctrl = rafController;
-        const scenario = getRafScenario().dataset.rafScenario;
-
-        setStatus("raf", "running");
-        setResult("raf", `<span class="running">Measuring…</span>`);
-        document.getElementById("run-raf").disabled = true;
-
-        try {
-          if (scenario === "pressure") startPressure();
-          const report = await rafCadence({ durationMs: 2000, signal: ctrl.signal });
-          stopPressure();
-          if (ctrl.signal.aborted) return;
-          setStatus("raf", "done");
-          const note = scenario === "pressure" ? "Measured with ~8 ms/frame sync work applied as animation pressure" : "";
-          setResult("raf", renderRafReport(report, note));
-        } catch {
-          stopPressure();
-          if (!ctrl.signal.aborted) {
-            setStatus("raf", "error");
-            setResult("raf", `<span class="error-msg">Measurement failed.</span>`);
-          }
-        } finally {
-          document.getElementById("run-raf").disabled = false;
-        }
-      });
-
-      document.getElementById("reset-raf").addEventListener("click", () => {
-        rafController?.abort();
-        stopPressure();
-        setStatus("raf", "idle");
-        setResult("raf", `<span class="hint">Select a scenario and click Run.</span>`);
-        document.getElementById("run-raf").disabled = false;
-      });
-
       // ── LoopMonitor ────────────────────────────────────────────────────────
 
       const MONITOR_INTERVAL = 2000;
@@ -691,7 +538,7 @@
           <div class="monitor-meta">
             <span>reports: <b>${reportCount}</b></span>
             <span>jank events: <b>${jankCount}</b></span>
-            <span>long tasks this cycle: <b>${report.longTasks.length}</b></span>
+            <span>long tasks this cycle: <b>${report.longTasks.count}</b></span>
             ${report.isJanky ? `<span class="jank-badge">⚠ janky</span>` : ""}
           </div>
           ${barChart([
@@ -700,18 +547,17 @@
             ["frame p95", report.raf.p95FrameTimeMs],
           ])}
           ${kv([
-            ["fps", report.raf.estimatedFps.toFixed(1)],
+            ["fps",     report.raf.estimatedFps.toFixed(1)],
             ["dropped", String(report.raf.droppedFrames)],
             ["blocked", fmt(report.lag.blockedTimeMs)],
-            ["spikes", String(report.lag.spikeCount)],
+            ["spikes",  String(report.lag.spikeCount)],
           ])}`;
       }
 
       try {
         monitor = new LoopMonitor({
           intervalMs: MONITOR_INTERVAL,
-          lagDurationMs: 400,
-          rafDurationMs: 300,
+          sampleDurationMs: 700,
           lagThresholdMs: 50,
           droppedFrameThreshold: 0,
           onReport: renderMonitorReport,
@@ -765,7 +611,7 @@
 
       } catch (err) {
         if (err instanceof EnvironmentNotSupportedError) {
-          setResult("monitor", `<span class="unsupported">Not supported in this environment — the longtask PerformanceObserver entry type is unavailable.</span>`);
+          setResult("monitor", `<span class="unsupported">Not supported in this environment — ${err.message}</span>`);
           ["start-monitor", "stop-monitor", "clear-monitor", "jank-monitor"].forEach((id) => {
             document.getElementById(id).disabled = true;
           });
@@ -783,12 +629,12 @@
 
       function renderComparison(before, after, delta) {
         const rows = [
-          ["p50",      before.p50,           after.p50,           delta.p50Delta,           "ms"],
-          ["p95",      before.p95,           after.p95,           delta.p95Delta,           "ms"],
-          ["p99",      before.p99,           after.p99,           delta.p99Delta,           "ms"],
-          ["max",      before.max,           after.max,           delta.maxDelta,           "ms"],
-          ["blocked",  before.blockedTimeMs, after.blockedTimeMs, delta.blockedTimeMsDelta, "ms"],
-          ["spikes",   before.spikeCount,    after.spikeCount,    delta.spikeCountDelta,    ""],
+          ["p50",     before.lag.p50,           after.lag.p50,           delta.lag.p50Delta,           "ms"],
+          ["p95",     before.lag.p95,           after.lag.p95,           delta.lag.p95Delta,           "ms"],
+          ["p99",     before.lag.p99,           after.lag.p99,           delta.lag.p99Delta,           "ms"],
+          ["max",     before.lag.max,           after.lag.max,           delta.lag.maxDelta,           "ms"],
+          ["blocked", before.lag.blockedTimeMs, after.lag.blockedTimeMs, delta.lag.blockedTimeMsDelta, "ms"],
+          ["spikes",  before.lag.spikeCount,    after.lag.spikeCount,    delta.lag.spikeCountDelta,    ""],
         ];
         return `<div class="compare-wrap"><table>
           <thead><tr><th>metric</th><th>before</th><th>after</th><th>delta</th></tr></thead>
@@ -814,7 +660,7 @@
 
         try {
           setResult("compare", `<span class="running">Measuring baseline…</span>`);
-          const before = await measureLoopLag({ durationMs: 500, signal: ctrl.signal });
+          const before = await measureLoopLag(() => sleep(500), { signal: ctrl.signal });
           if (ctrl.signal.aborted) return;
 
           if (scenario === "cpu-block") {
@@ -830,7 +676,7 @@
           }
 
           setResult("compare", `<span class="running">Measuring after…</span>`);
-          const after = await measureLoopLag({ durationMs: 500, signal: ctrl.signal });
+          const after = await measureLoopLag(() => sleep(500), { signal: ctrl.signal });
           if (ctrl.signal.aborted) return;
 
           setStatus("compare", "done");
