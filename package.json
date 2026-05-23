@@ -1,6 +1,6 @@
 {
   "name": "loopwatch",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A tiny TypeScript library that measures JavaScript event-loop responsiveness in the browser.",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -12,14 +12,6 @@
     "./measure-lag": {
       "types": "./dist/measure-lag.d.ts",
       "import": "./dist/measure-lag.mjs"
-    },
-    "./raf-cadence": {
-      "types": "./dist/raf-cadence.d.ts",
-      "import": "./dist/raf-cadence.mjs"
-    },
-    "./microtasks": {
-      "types": "./dist/microtasks.d.ts",
-      "import": "./dist/microtasks.mjs"
     },
     "./long-tasks": {
       "types": "./dist/long-tasks.d.ts",
@@ -72,7 +64,6 @@
     "browser",
     "long-task",
     "raf",
-    "microtask",
     "performance-observer",
     "typescript",
     "monitoring"
