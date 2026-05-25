@@ -19,10 +19,10 @@ jobs:
           node-version: ${{ matrix.node }}
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bun run lint
-      - run: bun run type-check
-      - run: bun run test
-      - run: bun run build
-      - run: bun run test:pack
+      - run: bun run --filter 'loopwatch' lint
+      - run: bun run --filter 'loopwatch' type-check
+      - run: bun run --filter 'loopwatch' test
+      - run: bun run --filter 'loopwatch' build
+      - run: bun run --filter 'loopwatch' test:pack
       - run: bunx playwright install --with-deps chromium
-      - run: bun run test:browser
+      - run: bun run --filter 'loopwatch' test:browser
