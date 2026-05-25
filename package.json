@@ -1,75 +1,16 @@
 {
-  "name": "loopwatch",
-  "version": "1.0.0",
-  "description": "A tiny TypeScript library that measures JavaScript event-loop responsiveness in the browser.",
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs"
-    },
-    "./measure-lag": {
-      "types": "./dist/measure-lag.d.ts",
-      "import": "./dist/measure-lag.mjs"
-    },
-    "./long-tasks": {
-      "types": "./dist/long-tasks.d.ts",
-      "import": "./dist/long-tasks.mjs"
-    },
-    "./loop-monitor": {
-      "types": "./dist/loop-monitor.d.ts",
-      "import": "./dist/loop-monitor.mjs"
-    },
-    "./compare-reports": {
-      "types": "./dist/compare-reports.d.ts",
-      "import": "./dist/compare-reports.mjs"
-    }
-  },
-  "sideEffects": false,
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
+  "name": "loopwatch-workspace",
+  "private": true,
+  "workspaces": ["packages/*"],
   "scripts": {
-    "build": "rollup -c",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run",
-    "test:browser": "playwright test",
-    "test:browser:install": "playwright install chromium",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "lint": "eslint --cache src test browser-smoke playwright.config.ts",
-    "format": "prettier --write \"{src,test,browser-smoke}/**/*.ts\" \"playwright.config.ts\" --list-different",
-    "test:pack": "bun run build && node scripts/smoke-dist.mjs && bun pm pack --dry-run",
-    "prepublishOnly": "bun run lint && bun run type-check && bun run test && bun run build",
+    "build": "bun run --filter 'loopwatch' build",
+    "test": "bun run --filter 'loopwatch' test",
+    "lint": "bun run --filter 'loopwatch' lint",
+    "type-check": "bun run --filter 'loopwatch' type-check",
     "prepare": "[ -x node_modules/.bin/husky ] && node_modules/.bin/husky || true"
   },
-  "engines": {
-    "node": ">=22"
-  },
-  "license": "MIT",
-  "homepage": "https://github.com/irisfield/loopwatch#readme",
-  "bugs": {
-    "url": "https://github.com/irisfield/loopwatch/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/irisfield/loopwatch.git"
-  },
-  "keywords": [
-    "event-loop",
-    "performance",
-    "browser",
-    "long-task",
-    "raf",
-    "performance-observer",
-    "typescript",
-    "monitoring"
-  ],
   "lint-staged": {
-    "{src,test}/**/*.ts": [
+    "{packages/core/src,packages/core/test}/**/*.ts": [
       "eslint --cache --fix",
       "prettier --write"
     ]

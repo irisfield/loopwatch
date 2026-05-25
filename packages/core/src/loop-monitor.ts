@@ -1,6 +1,6 @@
 import { EnvironmentNotSupportedError, hasPerformanceNow, hasRequestAnimationFrame } from "./env";
 import { measureLoopLag } from "./measure-lag";
-import { assertNonNegativeFinite, assertPositiveFinite } from "./validation";
+import { assertPositiveFinite } from "./validation";
 
 import type {
   LagReport,
@@ -14,7 +14,6 @@ export interface LoopMonitorOptions {
   intervalMs?: number;
   sampleDurationMs?: number;
   lagThresholdMs?: number;
-  droppedFrameThreshold?: number;
   onReport?: (report: LoopMonitorReport) => void;
   onLongTask?: (entry: PerformanceEntry) => void;
   onJank?: (report: LoopMonitorReport) => void;
@@ -47,7 +46,6 @@ export class LoopMonitor {
   private readonly _intervalMs: number;
   private readonly _sampleDurationMs: number;
   private readonly _lagThresholdMs: number;
-  private readonly _droppedFrameThreshold: number;
   private readonly _onReport: ((report: LoopMonitorReport) => void) | undefined;
   private readonly _onLongTask: ((entry: PerformanceEntry) => void) | undefined;
   private readonly _onJank: ((report: LoopMonitorReport) => void) | undefined;
@@ -67,12 +65,10 @@ export class LoopMonitor {
     this._intervalMs = options?.intervalMs ?? 5000;
     this._sampleDurationMs = options?.sampleDurationMs ?? 1000;
     this._lagThresholdMs = options?.lagThresholdMs ?? 50;
-    this._droppedFrameThreshold = options?.droppedFrameThreshold ?? 0;
 
     assertPositiveFinite(this._intervalMs, "intervalMs");
     assertPositiveFinite(this._sampleDurationMs, "sampleDurationMs");
     assertPositiveFinite(this._lagThresholdMs, "lagThresholdMs");
-    assertNonNegativeFinite(this._droppedFrameThreshold, "droppedFrameThreshold");
 
     this._onReport = options?.onReport;
     this._onLongTask = options?.onLongTask;
@@ -135,9 +131,7 @@ export class LoopMonitor {
       longTasks: measurement.longTasks,
       raf: measurement.raf,
       worstWindow: measurement.worstWindow,
-      isJanky:
-        measurement.lag.p99 >= this._lagThresholdMs ||
-        measurement.raf.droppedFrames > this._droppedFrameThreshold,
+      isJanky: measurement.lag.p99 > this._lagThresholdMs,
     };
 
     this._lastReport = report;

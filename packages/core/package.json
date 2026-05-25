@@ -1,0 +1,55 @@
+{
+  "name": "loopwatch",
+  "version": "0.0.1",
+  "description": "Event-loop lag measurement and CI enforcement for Playwright and React.",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:browser:install": "playwright install chromium",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint --cache src test browser-smoke playwright.config.ts",
+    "format": "prettier --write \"{src,test,browser-smoke}/**/*.ts\" \"playwright.config.ts\" --list-different",
+    "test:pack": "bun run build && node scripts/smoke-dist.mjs && bun pm pack --dry-run",
+    "prepublishOnly": "bun run lint && bun run type-check && bun run test && bun run test:pack"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/irisfield/loopwatch#readme",
+  "bugs": {
+    "url": "https://github.com/irisfield/loopwatch/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/irisfield/loopwatch.git"
+  },
+  "keywords": [
+    "event-loop",
+    "performance",
+    "playwright",
+    "ci",
+    "testing",
+    "inp",
+    "long-task",
+    "performance-observer",
+    "typescript"
+  ]
+}

@@ -9,7 +9,7 @@ Every frontend bottleneck traces back to event-loop contention. Tools like `web-
 ## Install
 
 ```
-npm install loopwatch
+bunx jsr add @irisfield/loopwatch
 ```
 
 ## Usage
@@ -275,17 +275,6 @@ bun install
 bun test
 bun run build
 ```
-
-### Running the examples
-
-Build first, then serve the project root over HTTP (browsers block ES module imports from `file://`):
-
-```
-bun run build
-bunx serve .
-```
-
-Open `http://localhost:3000/examples/index.html`. Each panel runs independently — select a scenario, click Run, and results appear inline. The page covers all four APIs with scenario controls that create different event-loop conditions: idle baseline, CPU block, repeated blocks, and before/after comparison.
 
 ## License
 

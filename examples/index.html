@@ -283,7 +283,7 @@
         LoopMonitor,
         compareReports,
         measureLoopLag,
-      } from "../dist/index.mjs";
+      } from "../packages/core/dist/index.mjs";
 
       // ── Utilities ──────────────────────────────────────────────────────────
 
@@ -559,7 +559,6 @@
           intervalMs: MONITOR_INTERVAL,
           sampleDurationMs: 700,
           lagThresholdMs: 50,
-          droppedFrameThreshold: 0,
           onReport: renderMonitorReport,
           onJank: () => {},
         });

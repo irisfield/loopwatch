@@ -156,7 +156,6 @@ describe("LoopMonitor", () => {
     ["intervalMs", { intervalMs: 0 }],
     ["sampleDurationMs", { sampleDurationMs: -1 }],
     ["lagThresholdMs", { lagThresholdMs: Number.POSITIVE_INFINITY }],
-    ["droppedFrameThreshold", { droppedFrameThreshold: -1 }],
   ])("throws RangeError for invalid %s", (_, options) => {
     expect(() => new LoopMonitor(options)).toThrow(RangeError);
   });

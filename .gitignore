@@ -5,3 +5,4 @@ coverage/
 .eslintcache
 playwright-report/
 test-results/
+.rollup.cache/
