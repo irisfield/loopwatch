@@ -12,6 +12,10 @@
     "./assert": {
       "types": "./dist/assert.d.ts",
       "import": "./dist/assert.mjs"
+    },
+    "./summary": {
+      "types": "./dist/summary.d.ts",
+      "import": "./dist/summary.mjs"
     }
   },
   "sideEffects": false,

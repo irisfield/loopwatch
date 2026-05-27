@@ -21,3 +21,5 @@ export { EnvironmentNotSupportedError } from "./env";
 
 export { assertHealthy } from "./assert";
 export type { HealthThresholds } from "./assert";
+
+export { summary } from "./summary";
