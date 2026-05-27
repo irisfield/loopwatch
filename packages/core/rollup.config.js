@@ -4,7 +4,7 @@ import dts from "rollup-plugin-dts";
 
 const tsconfig = "./tsconfig.build.json";
 
-const subpaths = ["measure-lag", "long-tasks", "loop-monitor", "compare-reports"];
+const subpaths = ["assert", "measure-lag", "long-tasks", "loop-monitor", "compare-reports"];
 
 const subpathBuilds = subpaths.flatMap((name) => [
   {

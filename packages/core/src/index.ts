@@ -18,3 +18,6 @@ export { LoopMonitor } from "./loop-monitor";
 export type { LoopMonitorOptions, LoopMonitorReport } from "./loop-monitor";
 
 export { EnvironmentNotSupportedError } from "./env";
+
+export { assertHealthy } from "./assert";
+export type { HealthThresholds } from "./assert";

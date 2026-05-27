@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs"
+    },
+    "./assert": {
+      "types": "./dist/assert.d.ts",
+      "import": "./dist/assert.mjs"
     }
   },
   "sideEffects": false,
