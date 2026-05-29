@@ -1,0 +1,55 @@
+name: Update bundle size badge
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+        working-directory: packages/core
+
+      - name: Update bundle size badge in README
+        run: |
+          node << 'EOF'
+          const fs = require("fs");
+          const zlib = require("zlib");
+          const content = fs.readFileSync("packages/core/dist/index.min.mjs");
+          const minKb = (content.length / 1024).toFixed(1);
+          const gzKb = (zlib.gzipSync(content).length / 1024).toFixed(1);
+          const badge = `![Bundle size](https://img.shields.io/badge/bundle-${minKb}KB%20min%20%7C%20${gzKb}KB%20gzip-green.svg)`;
+          const path = "packages/core/README.md";
+          const readme = fs.readFileSync(path, "utf8");
+          const pattern = /!\[Bundle size\]\(https:\/\/img\.shields\.io\/badge\/bundle-[^)]+\)/;
+          if (!pattern.test(readme)) {
+            console.error("Bundle size badge not found in README — cannot update");
+            process.exit(1);
+          }
+          const updated = readme.replace(pattern, badge);
+          if (updated !== readme) {
+            fs.writeFileSync(path, updated);
+            fs.writeFileSync(".badge-size", `${minKb}KB min | ${gzKb}KB gzip`);
+            console.log("updated: " + badge);
+          } else {
+            console.log("badge unchanged");
+          }
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet packages/core/README.md; then
+            SIZE=$(cat .badge-size)
+            git add packages/core/README.md
+            git commit -m "updated bundle size badge to ${SIZE}"
+            git push origin HEAD:main
+          fi
