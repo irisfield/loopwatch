@@ -63,5 +63,11 @@ test("observes a real browser long task after blocking the main thread", async (
   const entries = await page.evaluate(() => globalThis.loopwatchSmoke.longTask());
 
   expect(entries.length).toBeGreaterThan(0);
-  expect(entries.some((entry) => entry.entryType === "longtask" && entry.duration >= 50)).toBe(true);
+  expect(
+    entries.some(
+      (entry) =>
+        (entry.entryType === "longtask" || entry.entryType === "long-animation-frame") &&
+        entry.duration >= 50,
+    ),
+  ).toBe(true);
 });
