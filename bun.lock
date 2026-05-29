@@ -32,6 +32,13 @@
     "packages/playwright": {
       "name": "loopwatch-playwright",
       "version": "0.0.1",
+      "devDependencies": {
+        "loopwatch": "workspace:*",
+      },
+      "peerDependencies": {
+        "@playwright/test": ">=1.40.0",
+        "loopwatch": "^0.0.1",
+      },
     },
     "packages/react": {
       "name": "loopwatch-react",

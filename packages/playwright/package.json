@@ -1,6 +1,30 @@
 {
   "name": "loopwatch-playwright",
   "version": "0.0.1",
+  "description": "Playwright fixture for measuring main-thread blocking and enforcing responsiveness in CI.",
   "type": "module",
-  "private": true
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "sideEffects": false,
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=22" },
+  "license": "MIT",
+  "peerDependencies": {
+    "@playwright/test": ">=1.40.0",
+    "loopwatch": "^0.0.1"
+  },
+  "devDependencies": {
+    "loopwatch": "workspace:*"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "type-check": "tsc --noEmit",
+    "test": "playwright test",
+    "lint": "eslint --cache src"
+  }
 }
