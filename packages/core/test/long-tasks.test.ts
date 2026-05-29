@@ -18,6 +18,24 @@ function makeEntry(duration: number, startTime = 0): PerformanceEntry {
   };
 }
 
+function makeScriptTiming(): PerformanceScriptTiming {
+  return {
+    name: "",
+    entryType: "script",
+    startTime: 100,
+    duration: 50,
+    toJSON: () => ({}),
+    sourceURL: "https://example.com/app.js",
+    sourceFunctionName: "handleClick",
+    sourceCharPosition: 42,
+    invokerType: "event-listener",
+    windowAttribution: "self",
+    executionStart: 105,
+    pauseDuration: 0,
+    forcedStyleAndLayoutDuration: 0,
+  };
+}
+
 function dispatchEntries(entries: PerformanceEntry[]): void {
   const list: PerformanceObserverEntryList = {
     getEntries: () => entries,
@@ -25,6 +43,21 @@ function dispatchEntries(entries: PerformanceEntry[]): void {
     getEntriesByType: () => entries,
   };
   capturedCallback(list);
+}
+
+function stubObserverWithTypes(supportedEntryTypes: string[]): void {
+  const instance = {
+    observe: vi.fn(),
+    disconnect: vi.fn(),
+    takeRecords: (): PerformanceEntry[] => [],
+  };
+  vi.stubGlobal(
+    "PerformanceObserver",
+    Object.assign(
+      vi.fn(() => instance),
+      { supportedEntryTypes },
+    ),
+  );
 }
 
 beforeEach(() => {
@@ -57,6 +90,42 @@ describe("LongTaskObserver", () => {
   it("throws EnvironmentNotSupportedError when PerformanceObserver is unavailable", () => {
     vi.stubGlobal("PerformanceObserver", null);
     expect(() => new LongTaskObserver()).toThrow(EnvironmentNotSupportedError);
+  });
+
+  it("constructor does not throw when only long-animation-frame is supported", () => {
+    stubObserverWithTypes(["long-animation-frame"]);
+    expect(() => new LongTaskObserver()).not.toThrow();
+  });
+
+  it("constructor does not throw when only longtask is supported", () => {
+    stubObserverWithTypes(["longtask"]);
+    expect(() => new LongTaskObserver()).not.toThrow();
+  });
+
+  it("constructor throws EnvironmentNotSupportedError when neither type is supported", () => {
+    stubObserverWithTypes([]);
+    expect(() => new LongTaskObserver()).toThrow(EnvironmentNotSupportedError);
+  });
+
+  it("error message contains 'long-animation-frame' and 'longtask' when neither is supported", () => {
+    stubObserverWithTypes([]);
+    let caught: unknown;
+    try {
+      new LongTaskObserver();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(EnvironmentNotSupportedError);
+    if (caught instanceof EnvironmentNotSupportedError) {
+      expect(caught.message).toContain("long-animation-frame");
+      expect(caught.message).toContain("longtask");
+    }
+  });
+
+  it("PerformanceScriptTiming fields are accessible on LoAF entries without TypeScript errors", () => {
+    const script = makeScriptTiming();
+    expect(script.sourceFunctionName).toBe("handleClick");
+    expect(script.sourceURL).toBe("https://example.com/app.js");
   });
 
   it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(

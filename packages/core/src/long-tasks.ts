@@ -1,10 +1,17 @@
-import { EnvironmentNotSupportedError, hasLongTaskSupport, hasPerformanceObserver } from "./env";
+import {
+  EnvironmentNotSupportedError,
+  hasLongAnimationFrameSupport,
+  hasLongTaskSupport,
+  hasPerformanceObserver,
+} from "./env";
 import { assertPositiveFinite } from "./validation";
 
 export interface LongTaskOptions {
   threshold?: number;
   onLongTask?: (entry: PerformanceEntry) => void;
 }
+
+const UNSUPPORTED_MSG = "PerformanceObserver types 'long-animation-frame' and 'longtask'";
 
 export class LongTaskObserver implements Iterable<PerformanceEntry> {
   private readonly _threshold: number;
@@ -16,8 +23,8 @@ export class LongTaskObserver implements Iterable<PerformanceEntry> {
     if (!hasPerformanceObserver()) {
       throw new EnvironmentNotSupportedError("PerformanceObserver");
     }
-    if (!hasLongTaskSupport()) {
-      throw new EnvironmentNotSupportedError("PerformanceObserver type 'longtask'");
+    if (!hasLongAnimationFrameSupport() && !hasLongTaskSupport()) {
+      throw new EnvironmentNotSupportedError(UNSUPPORTED_MSG);
     }
     this._threshold = options?.threshold ?? 50;
     assertPositiveFinite(this._threshold, "threshold");
@@ -28,8 +35,13 @@ export class LongTaskObserver implements Iterable<PerformanceEntry> {
   start(): void {
     this.stop();
 
-    if (!hasLongTaskSupport()) {
-      throw new EnvironmentNotSupportedError("PerformanceObserver type 'longtask'");
+    let type: string;
+    if (hasLongAnimationFrameSupport()) {
+      type = "long-animation-frame";
+    } else if (hasLongTaskSupport()) {
+      type = "longtask";
+    } else {
+      throw new EnvironmentNotSupportedError(UNSUPPORTED_MSG);
     }
 
     const observer = new PerformanceObserver((list) => {
@@ -42,10 +54,10 @@ export class LongTaskObserver implements Iterable<PerformanceEntry> {
     });
 
     try {
-      observer.observe({ type: "longtask", buffered: true });
+      observer.observe({ type, buffered: true });
     } catch {
       observer.disconnect();
-      throw new EnvironmentNotSupportedError("PerformanceObserver type 'longtask'");
+      throw new EnvironmentNotSupportedError(UNSUPPORTED_MSG);
     }
 
     this._observer = observer;
