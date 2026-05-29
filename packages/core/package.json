@@ -16,6 +16,10 @@
     "./summary": {
       "types": "./dist/summary.d.ts",
       "import": "./dist/summary.mjs"
+    },
+    "./serialization": {
+      "types": "./dist/serialization.d.ts",
+      "import": "./dist/serialization.mjs"
     }
   },
   "sideEffects": false,
