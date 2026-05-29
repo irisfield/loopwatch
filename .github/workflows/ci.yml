@@ -26,3 +26,6 @@ jobs:
       - run: bun run --filter 'loopwatch' test:pack
       - run: bunx playwright install --with-deps chromium
       - run: bun run --filter 'loopwatch' test:browser
+      - run: bun run --filter 'loopwatch-playwright' lint
+      - run: bun run --filter 'loopwatch-playwright' type-check
+      - run: bun run --filter 'loopwatch-playwright' build
