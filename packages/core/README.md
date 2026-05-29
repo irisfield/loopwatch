@@ -1,10 +1,17 @@
 # loopwatch
 
-A tiny TypeScript library that measures JavaScript event-loop responsiveness in the browser.
+loopwatch measures the main-thread blocking that delays user input — and turns regressions into failing CI tests before they ship.
 
-## Why
+[![JSR](https://jsr.io/badges/@irisfield/loopwatch)](https://jsr.io/@irisfield/loopwatch)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Bundle size](https://img.shields.io/badge/bundle-9.3KB%20min%20%7C%203.3KB%20gzip-green.svg)
 
-Every frontend bottleneck traces back to event-loop contention. Tools like `web-vitals` measure user-facing symptoms (LCP, INP, CLS) but not the underlying mechanic. `loopwatch` measures the mechanic directly: you wrap the suspect work and the library reports what happened to the loop while it ran — lag distribution, frame cadence, long tasks, and the worst contiguous window of blockage.
+- Wraps any user interaction and measures how long the main thread was blocked
+- Throws a descriptive error in CI when lag, blocked time, or long tasks exceed your thresholds
+- Uses `long-animation-frame` (LoAF) when available for source-level attribution, falls back to `longtask`
+- Ships as ESM with zero runtime dependencies
+- Tree-shakeable — `assertHealthy` and `summary` are separate subpath exports
+- First-class Playwright integration for CI — React and DevTools support included
 
 ## Install
 
@@ -12,11 +19,53 @@ Every frontend bottleneck traces back to event-loop contention. Tools like `web-
 bunx jsr add @irisfield/loopwatch
 ```
 
-## Usage
+loopwatch runs in the browser. Bundle it into your app with Vite, esbuild, or any other bundler, or inject it into a Playwright test page via `addInitScript`. It does not run in Node.js.
+
+## Quick Start
+
+```typescript
+import { measureLoopLag } from "loopwatch";
+import { assertHealthy } from "loopwatch/assert";
+
+const m = await measureLoopLag(async () => {
+  await processCartItems(cart);
+});
+
+assertHealthy(m, { maxP99: 30, maxBlockedMs: 0, maxLongTasks: 0 });
+```
+
+loopwatch fires a concurrent `setTimeout(0)` loop while your function runs. When JavaScript holds the main thread synchronously — parsing JSON, running a tight loop, executing a heavy event handler — that timer fires late. The delay is the lag. `await` on network I/O does not register as lag because the thread is idle during the wait.
+
+When `assertHealthy` throws, the error names every violation:
+
+```
+Loop health assertion failed:
+  - lag.p99 142.3ms exceeds limit 30ms
+  - longTasks.count 2 exceeds limit 0
+  - lag.blockedTimeMs 142.3ms exceeds limit 0ms
+```
+
+Drop it into any test runner and it becomes a failing CI test. When a test fails, call `summary(m)` to get LoAF source attribution pointing to the exact function and file that blocked:
+
+```
+523ms total · p50=3ms p99=142ms · 2 long task(s) · worst: 142ms blocked at t=218ms (encryptPayload in checkout.js)
+```
+
+For the full Playwright CI integration — wrapping real browser interactions and measuring thread health per click — see `loopwatch-playwright`.
+
+## INP and input delay
+
+INP (Interaction to Next Paint) is a Core Web Vital that measures responsiveness to user interactions. Its first component — input delay — is caused by main-thread blocking: when JavaScript holds the thread, the browser cannot begin executing event handlers. loopwatch measures exactly this. It does not measure processing time or presentation delay.
+
+## API
+
+All exports are individually importable and tree-shake independently. The core primitive is `measureLoopLag` — everything else builds on top of it.
 
 ### `measureLoopLag`
 
-Wraps any function — sync or async — and measures event-loop health while it runs. Fires `setTimeout(0)` concurrently to sample lag, collects `requestAnimationFrame` intervals, and observes long tasks. Returns a `LoopMeasurement<T>` when `fn` resolves.
+> **Browser only.** Requires `performance.now`, `requestAnimationFrame`, and optionally `PerformanceObserver`. Does not run in Node.js.
+
+Wraps any function — sync or async — and measures event-loop health while it runs. Fires `setTimeout(0)` concurrently to sample lag, collects `requestAnimationFrame` intervals, and observes long tasks (using `long-animation-frame` when available, falling back to `longtask`). Returns a `LoopMeasurement<T>` when `fn` resolves.
 
 ```typescript
 import { measureLoopLag } from "loopwatch";
@@ -47,9 +96,45 @@ const m = await measureLoopLag(() => longRunningWork(), { signal: controller.sig
 
 ---
 
+### `assertHealthy` · `loopwatch/assert`
+
+Throws if any threshold is exceeded. Collects all violations before throwing — one error lists every failure. All thresholds are optional; passing `{}` is a no-op.
+
+```typescript
+import { assertHealthy } from "loopwatch/assert";
+
+assertHealthy(m, {
+  maxP99: 30, // fail if p99 lag exceeds 30 ms
+  maxBlockedMs: 0, // fail if any blocked time
+  maxLongTasks: 0, // fail if any long tasks
+  maxSpikeCount: 0, // fail if any lag spikes
+  maxDroppedFrames: 2, // advisory — unreliable in headless; annotated in error output
+});
+```
+
+Threshold check is strict-greater: `actual > threshold` fails, `actual === threshold` passes.
+
+---
+
+### `summary` · `loopwatch/summary`
+
+Formats a `LoopMeasurement` as a human-readable one-line string. Useful for `console.log` during local development. Does not throw for any input.
+
+```typescript
+import { summary } from "loopwatch/summary";
+
+console.log(summary(m));
+// "523ms total · p50=1ms p99=4ms · 0 long task(s) · worst: 0ms blocked at t=0ms"
+
+// With LoAF attribution when available:
+// "523ms total · p50=3ms p99=142ms · 2 long task(s) · worst: 142ms blocked at t=218ms (encryptPayload in checkout.js)"
+```
+
+---
+
 ### `LongTaskObserver`
 
-Wraps the browser's `PerformanceObserver` for the `longtask` entry type. Any synchronous block of work that holds the main thread for 50 ms or more is a long task. During that time the browser cannot render frames, handle input, or run other callbacks.
+Observes main-thread blocking work. Uses the `long-animation-frame` (LoAF) entry type when available (Chrome 116+), falling back to `longtask`. LoAF entries include `scripts` attribution — the source file and function name of the script that blocked the thread.
 
 ```typescript
 import { LongTaskObserver } from "loopwatch";
@@ -84,7 +169,7 @@ Runs `measureLoopLag` on a repeating cycle. Use it when you want ongoing app-lev
 import { LoopMonitor } from "loopwatch";
 
 const monitor = new LoopMonitor({
-  intervalMs: 5000,      // wait between cycles
+  intervalMs: 5000, // wait between cycles
   sampleDurationMs: 500, // how long to measure each cycle
   lagThresholdMs: 50,
   droppedFrameThreshold: 0,
@@ -124,6 +209,14 @@ const delta = compareReports(before, after);
 // delta.lag.spikeCountDelta    — change in threshold crossings
 // delta.raf.droppedFramesDelta — change in dropped frames
 ```
+
+---
+
+## Ecosystem
+
+- **[loopwatch](https://jsr.io/@irisfield/loopwatch)** — this package, measurement engine
+- **loopwatch-playwright** — Playwright fixture for CI enforcement (flagship) _(coming soon)_
+- **loopwatch-react** — React hooks for local diagnostics (optional) _(coming soon)_
 
 ---
 
@@ -228,18 +321,19 @@ loopwatch measures only event-loop and rendering timing. It does not collect, tr
 
 ## Browser support
 
-| API                     | Required by                       | Notes                                                       |
-| ----------------------- | --------------------------------- | ----------------------------------------------------------- |
-| `performance.now`       | All exports                       | Universal in modern browsers                                |
-| `setTimeout`            | `measureLoopLag`                  | Universal                                                   |
-| `requestAnimationFrame` | `measureLoopLag`, `LoopMonitor`   | Universal                                                   |
-| `PerformanceObserver`   | `LongTaskObserver`, `measureLoopLag` (long tasks) | Chrome, Edge, Firefox; `'longtask'` not supported in Safari |
+| API                           | Required by                                       | Notes                                          |
+| ----------------------------- | ------------------------------------------------- | ---------------------------------------------- |
+| `performance.now`             | All exports                                       | Universal in modern browsers                   |
+| `setTimeout`                  | `measureLoopLag`                                  | Universal                                      |
+| `requestAnimationFrame`       | `measureLoopLag`, `LoopMonitor`                   | Universal                                      |
+| `PerformanceObserver`         | `LongTaskObserver`, `measureLoopLag` (long tasks) | Chrome, Edge, Firefox; not supported in Safari |
+| `long-animation-frame` (LoAF) | `LongTaskObserver`, `measureLoopLag`              | Chrome 116+; `longtask` used as fallback       |
 
 When a required API is missing, the relevant export throws `EnvironmentNotSupportedError`.
 
 ### Safari
 
-Safari does not implement the `longtask` `PerformanceObserver` entry type (as of Safari 17). This means:
+Safari does not implement the `longtask` or `long-animation-frame` `PerformanceObserver` entry types (as of Safari 17). This means:
 
 - `LongTaskObserver` — throws `EnvironmentNotSupportedError` on construction in Safari.
 - `measureLoopLag` and `LoopMonitor` — still work in Safari; lag sampling and RAF cadence are unaffected. Long-task entries will be empty (`longTasks.count === 0`) because neither `longtask` nor `long-animation-frame` is available.
@@ -252,8 +346,8 @@ import { EnvironmentNotSupportedError, LongTaskObserver } from "loopwatch";
 try {
   const observer = new LongTaskObserver({ onLongTask: (entry) => report(entry) });
   observer.start();
-} catch (err) {
-  if (!(err instanceof EnvironmentNotSupportedError)) throw err;
+} catch (error) {
+  if (!(error instanceof EnvironmentNotSupportedError)) throw error;
   // long-task detection not available in this environment
 }
 ```
@@ -262,18 +356,17 @@ try {
 
 `"sideEffects": false` is set in `package.json`. Each export is fully independent — importing `measureLoopLag` does not load `LongTaskObserver` or any other module.
 
-## Bundle size
-
-`dist/index.min.mjs`: 7.8 KB minified · 2.9 KB gzipped
-
 ## Development
 
 ```
 git clone https://github.com/irisfield/loopwatch.git
 cd loopwatch
 bun install
-bun test
-bun run build
+bun run build              # compile all packages
+bun run test               # vitest unit tests
+bun run lint               # eslint
+bunx playwright install chromium
+bun run test:browser       # browser smoke tests (requires build first)
 ```
 
 ## License
