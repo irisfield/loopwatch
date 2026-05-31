@@ -60,9 +60,17 @@ async function measureWithPage(
 
   try {
     await fn();
-  } finally {
+  } catch (error) {
     page.off("load", onLoad);
+    if (nav.detected) {
+      throw new Error(
+        "loopwatch: page navigated inside fn() — measurement is invalid. " +
+          "Pass only user interactions to fn(), not navigations.",
+      );
+    }
+    throw error;
   }
+  page.off("load", onLoad);
 
   if (nav.detected) {
     throw new Error(
