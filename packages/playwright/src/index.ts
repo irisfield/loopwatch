@@ -14,6 +14,10 @@ const harnessSource = readFileSync(
   "utf8",
 );
 
+const NAV_ERROR =
+  "loopwatch: page navigated inside fn() — measurement is invalid. " +
+  "Pass only user interactions to fn(), not navigations.";
+
 export function assertHealthy(
   measurement: SerializedLoopMeasurement,
   thresholds: HealthThresholds,
@@ -63,21 +67,18 @@ async function measureWithPage(
   } catch (error) {
     page.off("load", onLoad);
     if (nav.detected) {
-      throw new Error(
-        "loopwatch: page navigated inside fn() — measurement is invalid. " +
-          "Pass only user interactions to fn(), not navigations.",
-      );
+      throw new Error(NAV_ERROR);
     }
     throw error;
   }
   page.off("load", onLoad);
 
   if (nav.detected) {
-    throw new Error(
-      "loopwatch: page navigated inside fn() — measurement is invalid. " +
-        "Pass only user interactions to fn(), not navigations.",
-    );
+    throw new Error(NAV_ERROR);
   }
+
+  // yield one task so pending PerformanceObserver callbacks (longtask) fire before h.end()
+  await page.waitForTimeout(50);
 
   return page.evaluate(() => {
     const h = globalThis.__loopwatch;
