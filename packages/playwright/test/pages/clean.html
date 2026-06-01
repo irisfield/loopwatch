@@ -1,0 +1,11 @@
+<!doctype html>
+<html>
+  <body>
+    <button id="go">Go</button>
+    <script>
+      document.getElementById("go").addEventListener("click", async () => {
+        await new Promise(r => setTimeout(r, 10));
+      });
+    </script>
+  </body>
+</html>
