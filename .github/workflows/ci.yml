@@ -29,3 +29,4 @@ jobs:
       - run: bun run --filter 'loopwatch-playwright' lint
       - run: bun run --filter 'loopwatch-playwright' type-check
       - run: bun run --filter 'loopwatch-playwright' build
+      - run: bun run --filter 'loopwatch-playwright' test
