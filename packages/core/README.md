@@ -5,6 +5,7 @@ loopwatch measures the main-thread blocking that delays user input — and turns
 [![JSR](https://jsr.io/badges/@irisfield/loopwatch)](https://jsr.io/@irisfield/loopwatch)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Bundle size](https://img.shields.io/badge/bundle-9.3KB%20min%20%7C%203.3KB%20gzip-green.svg)
+![Zero deps](https://img.shields.io/badge/deps-zero-brightgreen.svg)
 
 - Wraps any user interaction and measures how long the main thread was blocked
 - Throws a descriptive error in CI when lag, blocked time, or long tasks exceed your thresholds
@@ -51,11 +52,46 @@ Drop it into any test runner and it becomes a failing CI test. When a test fails
 523ms total · p50=3ms p99=142ms · 2 long task(s) · worst: 142ms blocked at t=218ms (encryptPayload in checkout.js)
 ```
 
-For the full Playwright CI integration — wrapping real browser interactions and measuring thread health per click — see `loopwatch-playwright`.
+The `encryptPayload in checkout.js` line is LoAF attribution — the browser names the script and function that held the thread. No guessing which call site caused the spike.
+
+For the full Playwright CI integration — wrapping real browser interactions in headless Chromium and measuring thread health per click — see [loopwatch-playwright](https://jsr.io/@irisfield/loopwatch-playwright).
+
+## In CI
+
+loopwatch runs in the browser, not in Node. The Playwright fixture handles injection and serialization for you. With `loopwatch-playwright`, your existing Playwright CI step is all you need:
+
+```yaml
+- name: Install Playwright browsers
+  run: npx playwright install --with-deps chromium
+
+- name: Run interaction tests
+  run: npx playwright test
+```
+
+The test fails with a structured error on threshold violations — a red check on the PR, not a vague timeout:
+
+```
+FAILED  tests/checkout.spec.ts > checkout submit does not block the main thread
+
+Error: Loop health assertion failed:
+  - lag.p99 142.3ms exceeds limit 30ms
+  - longTasks.count 3 exceeds limit 0
+  - lag.blockedTimeMs 142.3ms exceeds limit 0ms
+```
 
 ## INP and input delay
 
-INP (Interaction to Next Paint) is a Core Web Vital that measures responsiveness to user interactions. Its first component — input delay — is caused by main-thread blocking: when JavaScript holds the thread, the browser cannot begin executing event handlers. loopwatch measures exactly this. It does not measure processing time or presentation delay.
+> **Scope:** loopwatch measures **input delay** — the main-thread blocking that delays the browser from *starting* an event handler. It does not measure processing time or presentation delay. It is one component of INP, measured precisely, not all of INP estimated.
+
+INP (Interaction to Next Paint) is a Core Web Vital that measures responsiveness to user interactions. Its first component — input delay — is caused by main-thread blocking: when JavaScript holds the thread, the browser cannot begin executing event handlers. loopwatch measures exactly this.
+
+## Why not `performance.now()`?
+
+`performance.now()` measures wall time — it cannot distinguish between a 200ms network request (thread idle, no problem) and a 200ms synchronous loop (thread blocked, page frozen). Both look identical in wall time.
+
+loopwatch runs a concurrent `setTimeout(0)` sampler while your function executes. When the main thread is blocked, `setTimeout` fires late — that latency is the lag measurement. A 200ms `await fetch(...)` produces near-zero lag because the thread is genuinely idle during the wait. A 200ms `while (Date.now() < end) {}` produces 200ms of lag because the thread cannot run anything else.
+
+The additional signals — LoAF/longtask entries for attribution, percentile aggregation for statistical robustness, worst-window analysis — are non-trivial to implement correctly and easy to get subtly wrong.
 
 ## API
 
