@@ -1,6 +1,31 @@
 {
   "name": "loopwatch-react",
   "version": "0.0.1",
+  "description": "React hooks for loopwatch event-loop measurement.",
   "type": "module",
-  "private": true
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "private": true,
+  "sideEffects": false,
+  "files": ["dist", "README.md", "LICENSE"],
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "loopwatch": "^0.0.1"
+  },
+  "devDependencies": {
+    "loopwatch": "workspace:*",
+    "@types/react": "^19.0.0"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint --cache src"
+  }
 }

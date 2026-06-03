@@ -1,3 +1,3 @@
 /* eslint-disable unicorn/require-module-specifiers */
-// Implemented in specs 15 and 16
+// Implemented in spec 15
 export {};
