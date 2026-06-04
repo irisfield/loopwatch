@@ -1,3 +1,1 @@
-/* eslint-disable unicorn/require-module-specifiers */
-// Implemented in specs 15 and 16
-export {};
+export { useLoopWatch, type UseLoopWatchOptions, type UseLoopWatchResult } from "./use-loop-watch.js";
