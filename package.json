@@ -3,10 +3,11 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "build": "bun run --filter 'loopwatch' build",
-    "test": "bun run --filter 'loopwatch' test",
-    "lint": "bun run --filter 'loopwatch' lint",
-    "type-check": "bun run --filter 'loopwatch' type-check",
+    "build": "bun run --filter 'loopwatch' build && bun run --filter 'loopwatch-playwright' build && bun run --filter 'loopwatch-react' build",
+    "test": "bun run --filter '*' test",
+    "lint": "bun run --filter '*' lint",
+    "type-check": "bun run --filter '*' type-check",
+    "check-all": "bun run lint && bun run type-check && bun run test",
     "prepare": "[ -x node_modules/.bin/husky ] && node_modules/.bin/husky || true"
   },
   "lint-staged": {
