@@ -254,6 +254,8 @@ const delta = compareReports(before, after);
 - **loopwatch-playwright** — Playwright fixture for CI enforcement (flagship) _(coming soon)_
 - **loopwatch-react** — React hooks for local diagnostics (optional) _(coming soon)_
 
+For a comparison of loopwatch alongside React Scan, Sentry, Datadog, and Playwright tracing, see [which tool for which job](docs/which-tool.md).
+
 ---
 
 ## Recipes
