@@ -25,6 +25,7 @@
     "build": "rollup -c",
     "type-check": "tsc --noEmit",
     "test": "playwright test",
-    "lint": "eslint --cache src"
+    "lint": "eslint --cache src",
+    "prepublishOnly": "bun run lint && bun run type-check && bun run build && bun run test"
   }
 }
