@@ -7,7 +7,7 @@ import { assertHealthy as coreAssertHealthy, type HealthThresholds } from "loopw
 import type { SerializedLoopMeasurement } from "loopwatch/serialization";
 
 export type { HealthThresholds } from "loopwatch/assert";
-export type { SerializedLoopMeasurement as LoopMeasurement } from "loopwatch/serialization";
+export type { SerializedLoopMeasurement } from "loopwatch/serialization";
 
 const harnessSource = readFileSync(
   fileURLToPath(new URL("../dist/harness.iife.js", import.meta.url)),

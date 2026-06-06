@@ -115,7 +115,7 @@ test("form submit does not block the thread", async ({ page, loop }) => {
 ### `loop.measure(page, fn)`
 
 ```typescript
-loop.measure(page: Page, fn: () => Promise<void>): Promise<LoopMeasurement>
+loop.measure(page: Page, fn: () => Promise<void>): Promise<SerializedLoopMeasurement>
 ```
 
 Runs `fn` while sampling event-loop health in the browser. Returns a plain serializable measurement object when `fn` resolves. If `fn` throws, the error propagates and no measurement is returned.
@@ -137,7 +137,7 @@ Runs `fn` while sampling event-loop health in the browser. Returns a plain seria
 ### `assertHealthy(measurement, thresholds)`
 
 ```typescript
-assertHealthy(measurement: LoopMeasurement, thresholds: HealthThresholds): void
+assertHealthy(measurement: SerializedLoopMeasurement, thresholds: HealthThresholds): void
 ```
 
 Throws if any threshold is exceeded. Collects all violations before throwing — one error lists every failure. All thresholds are optional; passing `{}` is a no-op.
