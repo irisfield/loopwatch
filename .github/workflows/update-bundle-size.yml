@@ -6,6 +6,10 @@ on:
       - "loopwatch@*"
       - "loopwatch-playwright@*"
 
+concurrency:
+  group: bundle-size-update
+  cancel-in-progress: false
+
 jobs:
   update-badge:
     runs-on: ubuntu-latest
