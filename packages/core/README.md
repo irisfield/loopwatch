@@ -208,7 +208,6 @@ const monitor = new LoopMonitor({
   intervalMs: 5000, // wait between cycles
   sampleDurationMs: 500, // how long to measure each cycle
   lagThresholdMs: 50,
-  droppedFrameThreshold: 0,
   onReport: (report) => {
     console.log(report.lag.p99, report.raf.droppedFrames, report.longTasks.count);
   },
@@ -251,8 +250,8 @@ const delta = compareReports(before, after);
 ## Ecosystem
 
 - **[loopwatch](https://jsr.io/@irisfield/loopwatch)** — this package, measurement engine
-- **loopwatch-playwright** — Playwright fixture for CI enforcement (flagship) _(coming soon)_
-- **loopwatch-react** — React hooks for local diagnostics (optional) _(coming soon)_
+- **loopwatch-playwright** — Playwright fixture for CI enforcement (flagship)
+- **loopwatch-react** — React hooks for local diagnostics (optional)
 
 For a comparison of loopwatch alongside React Scan, Sentry, Datadog, and Playwright tracing, see [which tool for which job](docs/which-tool.md).
 
@@ -306,7 +305,6 @@ import { LoopMonitor } from "loopwatch";
 const monitor = new LoopMonitor({
   intervalMs: 30_000,
   lagThresholdMs: 50,
-  droppedFrameThreshold: 2,
   onReport: (report) => {
     analytics.track("loop_health", {
       p99LagMs: report.lag.p99,
@@ -324,9 +322,11 @@ const monitor = new LoopMonitor({
 monitor.start();
 ```
 
-`onReport` fires every `intervalMs`. `onJank` fires only when `lag.p99 >= lagThresholdMs` or `raf.droppedFrames > droppedFrameThreshold`, so it stays quiet under normal conditions and surfaces real problems without noise.
+`onReport` fires every `intervalMs`. `onJank` fires when `lag.p99 > lagThresholdMs`, so it stays quiet under normal conditions and surfaces real problems without noise.
 
 ### Detect background-tab throttling
+
+> **Advisory:** `raf.estimatedFps` is unreliable in headless environments and CI runners. This recipe is for production browser contexts only.
 
 Browsers throttle `requestAnimationFrame` to ~1 fps (or pause it entirely) when a tab is hidden. Check `raf.estimatedFps` from a short measurement before kicking off rendering work:
 
