@@ -48,7 +48,6 @@ async function measureWithPage(
   page: Page,
   fn: () => Promise<void>,
 ): Promise<SerializedLoopMeasurement> {
-  await page.evaluate(harnessSource);
   await page.evaluate(() => {
     const h = globalThis.__loopwatch;
     if (!h) throw new Error("loopwatch harness not installed");
@@ -96,6 +95,9 @@ export interface LoopFixture {
 export const loopwatchFixture: Fixtures<LoopFixture, Record<never, never>, { page: Page }> = {
   loop: async ({ page }, use) => {
     await page.addInitScript({ content: harnessSource });
+    // inject into the already-loaded page (about:blank) so measure() works
+    // without a preceding page.goto(); addInitScript covers future navigations
+    await page.evaluate(harnessSource);
     await use({ measure: measureWithPage });
   },
 };
