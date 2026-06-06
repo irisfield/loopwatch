@@ -4,7 +4,7 @@ loopwatch measures the main-thread blocking that delays user input — and turns
 
 [![JSR](https://jsr.io/badges/@irisfield/loopwatch)](https://jsr.io/@irisfield/loopwatch)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Bundle size](https://img.shields.io/badge/bundle-9.3KB%20min%20%7C%203.3KB%20gzip-green.svg)
+![Bundle size](https://img.shields.io/badge/bundle-9.0KB%20min%20%7C%203.3KB%20gzip-green.svg)
 ![Zero deps](https://img.shields.io/badge/deps-zero-brightgreen.svg)
 
 - Wraps any user interaction and measures how long the main thread was blocked
