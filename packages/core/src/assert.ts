@@ -1,4 +1,7 @@
-import type { LoopMeasurement } from "./measure-lag";
+import { formatCulprit } from "./attribution";
+
+import type { AttributableLongTask } from "./attribution";
+import type { LagReport, RafBlock } from "./measure-lag";
 
 export interface HealthThresholds {
   maxP50?: number;
@@ -9,8 +12,25 @@ export interface HealthThresholds {
   maxDroppedFrames?: number;
 }
 
-export function assertHealthy<T>(
-  measurement: LoopMeasurement<T>,
+// Structural — both LoopMeasurement<T> and SerializedLoopMeasurement satisfy this
+// (a deliberate widening from the original LoopMeasurement<T>-only contract, see
+// ARCHITECTURE.md). It hand-mirrors the subset of those shapes assertHealthy reads;
+// adding a field that assertHealthy should check requires updating this too.
+export interface AssertableMeasurement {
+  durationMs: number;
+  lag: LagReport;
+  raf: RafBlock;
+  longTasks: { count: number; totalDurationMs: number };
+  worstWindow: {
+    startMs: number;
+    endMs: number;
+    blockedTimeMs: number;
+    longTasks: readonly AttributableLongTask[];
+  };
+}
+
+export function assertHealthy(
+  measurement: AssertableMeasurement,
   thresholds: HealthThresholds,
 ): void {
   const violations: string[] = [];
@@ -64,6 +84,16 @@ export function assertHealthy<T>(
   }
 
   if (violations.length > 0) {
-    throw new Error(`Loop health assertion failed:\n${violations.join("\n")}`);
+    let message = `Loop health assertion failed:\n${violations.join("\n")}`;
+
+    if (measurement.worstWindow.blockedTimeMs > 0) {
+      const blocked = String(Math.round(measurement.worstWindow.blockedTimeMs));
+      const start = String(Math.round(measurement.worstWindow.startMs));
+      const culprit = formatCulprit(measurement.worstWindow.longTasks);
+      const suffix = culprit === null ? "" : ` (${culprit})`;
+      message += `\n  Worst blocking window: ${blocked}ms blocked at t=${start}ms${suffix}`;
+    }
+
+    throw new Error(message);
   }
 }
