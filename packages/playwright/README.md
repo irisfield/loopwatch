@@ -29,16 +29,17 @@ test("checkout submit does not block the main thread", async ({ page, loop }) =>
 });
 ```
 
-When a regression ships that blocks the main thread, the test fails with a message naming every violation:
+When a regression ships that blocks the main thread, the test fails with a message naming every violation — and the worst blocking window, with the function and file responsible:
 
 ```
 Loop health assertion failed:
   - lag.p99 142.3ms exceeds limit 30ms
   - longTasks.count 3 exceeds limit 0
   - lag.blockedTimeMs 142.3ms exceeds limit 0ms
+  Worst blocking window: 142ms blocked at t=218ms (encryptPayload in checkout.js)
 ```
 
-Each line names the field, the measured value, and the limit. No digging through traces to find what regressed.
+Each violation line names the field, the measured value, and the limit. The final line names the work to delete. No digging through traces to find what regressed.
 
 ## In CI
 
@@ -61,6 +62,7 @@ Error: Loop health assertion failed:
   - lag.p99 142.3ms exceeds limit 30ms
   - longTasks.count 3 exceeds limit 0
   - lag.blockedTimeMs 142.3ms exceeds limit 0ms
+  Worst blocking window: 142ms blocked at t=218ms (encryptPayload in checkout.js)
 ```
 
 The regression is caught before merge. No production monitoring required.

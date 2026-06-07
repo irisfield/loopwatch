@@ -35,13 +35,14 @@ test("checkout submit stays responsive", async ({ page, loop }) => {
 });
 ```
 
-When the interaction blocks the thread, the build fails with the metric, the measured value, and the limit it broke:
+When the interaction blocks the thread, the build fails by naming what to fix — the metric, the measured value, the limit it broke, and the worst blocking window with its culprit:
 
 ```
 Loop health assertion failed:
   - lag.p99 142.3ms exceeds limit 30ms
   - longTasks.count 3 exceeds limit 0
   - lag.blockedTimeMs 142.3ms exceeds limit 0ms
+  Worst blocking window: 142ms blocked at t=218ms (encryptPayload in checkout.js)
 ```
 
 ## Packages

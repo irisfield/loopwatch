@@ -37,14 +37,17 @@ assertHealthy(m, { maxP99: 30, maxBlockedMs: 0, maxLongTasks: 0 });
 
 loopwatch fires a concurrent `setTimeout(0)` loop while your function runs. When JavaScript holds the main thread synchronously — parsing JSON, running a tight loop, executing a heavy event handler — that timer fires late. The delay is the lag. `await` on network I/O does not register as lag because the thread is idle during the wait.
 
-When `assertHealthy` throws, the error names every violation:
+When `assertHealthy` throws, the error names every violation — and, when LoAF attribution is available, the worst blocking window and the function and file responsible:
 
 ```
 Loop health assertion failed:
   - lag.p99 142.3ms exceeds limit 30ms
   - longTasks.count 2 exceeds limit 0
   - lag.blockedTimeMs 142.3ms exceeds limit 0ms
+  Worst blocking window: 142ms blocked at t=218ms (encryptPayload in checkout.js)
 ```
+
+That final line is the work to delete, not just a number that crossed a threshold.
 
 Drop it into any test runner and it becomes a failing CI test. When a test fails, call `summary(m)` to get LoAF source attribution pointing to the exact function and file that blocked:
 
@@ -77,6 +80,7 @@ Error: Loop health assertion failed:
   - lag.p99 142.3ms exceeds limit 30ms
   - longTasks.count 3 exceeds limit 0
   - lag.blockedTimeMs 142.3ms exceeds limit 0ms
+  Worst blocking window: 142ms blocked at t=218ms (encryptPayload in checkout.js)
 ```
 
 ## INP and input delay
