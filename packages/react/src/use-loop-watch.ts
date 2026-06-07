@@ -1,4 +1,4 @@
-import { LoopMonitor, type LoopMonitorReport } from "loopwatch";
+import { LoopMonitor, type LoopMonitorReport } from "@irisfield/loopwatch";
 import { useState, useEffect } from "react";
 
 export interface UseLoopWatchOptions {

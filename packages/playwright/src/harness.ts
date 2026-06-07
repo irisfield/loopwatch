@@ -1,11 +1,11 @@
-import type { LagReport, RafBlock } from "loopwatch";
+import type { LagReport, RafBlock } from "@irisfield/loopwatch";
 import type {
   SerializedEntry,
   SerializedLongTaskBlock,
   SerializedLoopMeasurement,
   SerializedScriptTiming,
   SerializedWorstWindow,
-} from "loopwatch/serialization";
+} from "@irisfield/loopwatch/serialization";
 
 const BLOCK_THRESHOLD_MS = 50;
 const WORST_WINDOW_MS = 500;

@@ -1,4 +1,4 @@
-import { measureLoopLag, type LoopMeasurement } from "loopwatch";
+import { measureLoopLag, type LoopMeasurement } from "@irisfield/loopwatch";
 
 export interface UseLoopMeasureResult {
   measure: <T>(fn: () => T | Promise<T>) => Promise<LoopMeasurement<T>>;

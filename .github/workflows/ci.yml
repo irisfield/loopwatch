@@ -19,18 +19,18 @@ jobs:
           node-version: ${{ matrix.node }}
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bun run --filter 'loopwatch' lint
-      - run: bun run --filter 'loopwatch' type-check
-      - run: bun run --filter 'loopwatch' test
-      - run: bun run --filter 'loopwatch' build
-      - run: bun run --filter 'loopwatch' test:pack
+      - run: bun run --filter '@irisfield/loopwatch' lint
+      - run: bun run --filter '@irisfield/loopwatch' type-check
+      - run: bun run --filter '@irisfield/loopwatch' test
+      - run: bun run --filter '@irisfield/loopwatch' build
+      - run: bun run --filter '@irisfield/loopwatch' test:pack
       - run: bunx playwright install --with-deps chromium
-      - run: bun run --filter 'loopwatch' test:browser
-      - run: bun run --filter 'loopwatch-playwright' lint
-      - run: bun run --filter 'loopwatch-playwright' type-check
-      - run: bun run --filter 'loopwatch-playwright' build
-      - run: bun run --filter 'loopwatch-playwright' test
-      - run: bun run --filter 'loopwatch-react' lint
-      - run: bun run --filter 'loopwatch-react' type-check
-      - run: bun run --filter 'loopwatch-react' build
-      - run: bun run --filter 'loopwatch-react' test
+      - run: bun run --filter '@irisfield/loopwatch' test:browser
+      - run: bun run --filter '@irisfield/loopwatch-playwright' lint
+      - run: bun run --filter '@irisfield/loopwatch-playwright' type-check
+      - run: bun run --filter '@irisfield/loopwatch-playwright' build
+      - run: bun run --filter '@irisfield/loopwatch-playwright' test
+      - run: bun run --filter '@irisfield/loopwatch-react' lint
+      - run: bun run --filter '@irisfield/loopwatch-react' type-check
+      - run: bun run --filter '@irisfield/loopwatch-react' build
+      - run: bun run --filter '@irisfield/loopwatch-react' test

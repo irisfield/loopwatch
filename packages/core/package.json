@@ -1,5 +1,5 @@
 {
-  "name": "loopwatch",
+  "name": "@irisfield/loopwatch",
   "version": "0.0.1",
   "description": "Event-loop lag measurement and CI enforcement for Playwright and React.",
   "type": "module",

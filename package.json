@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "build": "bun run --filter 'loopwatch' build && bun run --filter 'loopwatch-playwright' build && bun run --filter 'loopwatch-react' build",
+    "build": "bun run --filter '@irisfield/loopwatch' build && bun run --filter '@irisfield/loopwatch-playwright' build && bun run --filter '@irisfield/loopwatch-react' build",
     "test": "bun run --filter '*' test",
     "lint": "bun run --filter '*' lint",
     "type-check": "bun run --filter '*' type-check",

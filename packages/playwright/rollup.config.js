@@ -18,13 +18,13 @@ export default [
   {
     input: "src/index.ts",
     output: { file: "dist/index.mjs", format: "esm", sourcemap: true },
-    external: ["node:fs", "node:url", "@playwright/test", "loopwatch", "loopwatch/assert", "loopwatch/serialization"],
+    external: ["node:fs", "node:url", "@playwright/test", "@irisfield/loopwatch", "@irisfield/loopwatch/assert", "@irisfield/loopwatch/serialization"],
     plugins: [typescript({ tsconfig, declaration: false })],
   },
   {
     input: "src/index.ts",
     output: { file: "dist/index.min.mjs", format: "esm", sourcemap: true },
-    external: ["node:fs", "node:url", "@playwright/test", "loopwatch", "loopwatch/assert", "loopwatch/serialization"],
+    external: ["node:fs", "node:url", "@playwright/test", "@irisfield/loopwatch", "@irisfield/loopwatch/assert", "@irisfield/loopwatch/serialization"],
     plugins: [
       typescript({ tsconfig, declaration: false }),
       terser({
@@ -37,7 +37,7 @@ export default [
   {
     input: "src/index.ts",
     output: { file: "dist/index.d.ts", format: "esm" },
-    external: ["node:fs", "node:url", "@playwright/test", "loopwatch", "loopwatch/assert", "loopwatch/serialization"],
+    external: ["node:fs", "node:url", "@playwright/test", "@irisfield/loopwatch", "@irisfield/loopwatch/assert", "@irisfield/loopwatch/serialization"],
     plugins: [dts()],
   },
 ];

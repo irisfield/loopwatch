@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { StrictMode } from "react";
-import type { LoopMonitorReport } from "loopwatch";
+import type { LoopMonitorReport } from "@irisfield/loopwatch";
 
 import { useLoopWatch } from "../src/use-loop-watch.js";
 
@@ -13,7 +13,7 @@ interface MockMonitor {
 
 const state = vi.hoisted(() => ({ instances: [] as MockMonitor[] }));
 
-vi.mock("loopwatch", () => ({
+vi.mock("@irisfield/loopwatch", () => ({
   LoopMonitor: vi.fn().mockImplementation(function (
     this: object,
     opts?: { onReport?: (r: LoopMonitorReport) => void },

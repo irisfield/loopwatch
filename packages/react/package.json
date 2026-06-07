@@ -1,5 +1,5 @@
 {
-  "name": "loopwatch-react",
+  "name": "@irisfield/loopwatch-react",
   "version": "0.0.1",
   "description": "React hooks for loopwatch event-loop measurement.",
   "type": "module",
@@ -15,10 +15,10 @@
   "license": "MIT",
   "peerDependencies": {
     "react": ">=16.8.0",
-    "loopwatch": "^0.0.1"
+    "@irisfield/loopwatch": "^0.0.1"
   },
   "devDependencies": {
-    "loopwatch": "workspace:*",
+    "@irisfield/loopwatch": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@types/react": "^19.0.0",

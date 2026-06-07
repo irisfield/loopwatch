@@ -7,13 +7,13 @@ export default [
   {
     input: "src/index.ts",
     output: { file: "dist/index.mjs", format: "esm", sourcemap: true },
-    external: ["react", "loopwatch"],
+    external: ["react", "@irisfield/loopwatch"],
     plugins: [typescript({ tsconfig, declaration: false })],
   },
   {
     input: "src/index.ts",
     output: { file: "dist/index.d.ts", format: "esm" },
-    external: ["react", "loopwatch"],
+    external: ["react", "@irisfield/loopwatch"],
     plugins: [dts({ tsconfig })],
   },
 ];

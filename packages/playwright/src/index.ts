@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { assertHealthy as coreAssertHealthy, type HealthThresholds } from "@irisfield/loopwatch/assert";
 import { type Fixtures, type Page } from "@playwright/test";
-import { assertHealthy as coreAssertHealthy, type HealthThresholds } from "loopwatch/assert";
 
-import type { SerializedLoopMeasurement } from "loopwatch/serialization";
+import type { SerializedLoopMeasurement } from "@irisfield/loopwatch/serialization";
 
-export type { HealthThresholds } from "loopwatch/assert";
-export type { SerializedLoopMeasurement } from "loopwatch/serialization";
+export type { HealthThresholds } from "@irisfield/loopwatch/assert";
+export type { SerializedLoopMeasurement } from "@irisfield/loopwatch/serialization";
 
 const harnessSource = readFileSync(
   fileURLToPath(new URL("../dist/harness.iife.js", import.meta.url)),

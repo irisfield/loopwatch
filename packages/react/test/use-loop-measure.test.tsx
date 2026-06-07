@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import type { LoopMeasurement } from "loopwatch";
+import type { LoopMeasurement } from "@irisfield/loopwatch";
 
 import { useLoopMeasure } from "../src/use-loop-measure.js";
 
 const mockMeasureLoopLag = vi.hoisted(() => vi.fn());
 
-vi.mock("loopwatch", () => ({
+vi.mock("@irisfield/loopwatch", () => ({
   measureLoopLag: mockMeasureLoopLag,
 }));
 

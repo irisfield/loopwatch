@@ -26,33 +26,33 @@
       },
     },
     "packages/core": {
-      "name": "loopwatch",
+      "name": "@irisfield/loopwatch",
       "version": "0.0.1",
     },
     "packages/playwright": {
-      "name": "loopwatch-playwright",
+      "name": "@irisfield/loopwatch-playwright",
       "version": "0.0.1",
       "devDependencies": {
-        "loopwatch": "workspace:*",
+        "@irisfield/loopwatch": "workspace:*",
       },
       "peerDependencies": {
+        "@irisfield/loopwatch": "^0.0.1",
         "@playwright/test": ">=1.40.0",
-        "loopwatch": "^0.0.1",
       },
     },
     "packages/react": {
-      "name": "loopwatch-react",
+      "name": "@irisfield/loopwatch-react",
       "version": "0.0.1",
       "devDependencies": {
+        "@irisfield/loopwatch": "workspace:*",
         "@testing-library/react": "^16.0.0",
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
-        "loopwatch": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
       },
       "peerDependencies": {
-        "loopwatch": "^0.0.1",
+        "@irisfield/loopwatch": "^0.0.1",
         "react": ">=16.8.0",
       },
     },
@@ -101,6 +101,12 @@
     "@humanwhocodes/module-importer": ["@humanwhocodes/module-importer@1.0.1", "", {}, "sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA=="],
 
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
+
+    "@irisfield/loopwatch": ["@irisfield/loopwatch@workspace:packages/core"],
+
+    "@irisfield/loopwatch-playwright": ["@irisfield/loopwatch-playwright@workspace:packages/playwright"],
+
+    "@irisfield/loopwatch-react": ["@irisfield/loopwatch-react@workspace:packages/react"],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 
@@ -535,12 +541,6 @@
     "locate-path": ["locate-path@6.0.0", "", { "dependencies": { "p-locate": "^5.0.0" } }, "sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw=="],
 
     "log-update": ["log-update@6.1.0", "", { "dependencies": { "ansi-escapes": "^7.0.0", "cli-cursor": "^5.0.0", "slice-ansi": "^7.1.0", "strip-ansi": "^7.1.0", "wrap-ansi": "^9.0.0" } }, "sha512-9ie8ItPR6tjY5uYJh8K/Zrv/RMZ5VOlOWvtZdEHYSTFKZfIBPQa9tOAEeAWhd+AnIneLJ22w5fjOYtoutpWq5w=="],
-
-    "loopwatch": ["loopwatch@workspace:packages/core"],
-
-    "loopwatch-playwright": ["loopwatch-playwright@workspace:packages/playwright"],
-
-    "loopwatch-react": ["loopwatch-react@workspace:packages/react"],
 
     "lz-string": ["lz-string@1.5.0", "", { "bin": { "lz-string": "bin/bin.js" } }, "sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ=="],
 
