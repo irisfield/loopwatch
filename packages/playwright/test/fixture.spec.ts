@@ -77,6 +77,28 @@ test("blocker.html — assertHealthy throws and message names the violation", as
   }
 });
 
+test("blocker.html — assertHealthy failure names the worst-blocking-window culprit through the CDP boundary", async ({
+  page,
+  loop,
+}) => {
+  await page.goto("http://127.0.0.1:4184/blocker.html");
+  const m = await loop.measure(page, async () => {
+    await page.click("#block");
+  });
+
+  let caught: unknown;
+  try {
+    assertHealthy(m, { maxLongTasks: 0 });
+  } catch (error) {
+    caught = error;
+  }
+  expect(caught).toBeInstanceOf(Error);
+  if (caught instanceof Error) {
+    expect(caught.message).toContain("Worst blocking window:");
+    expect(caught.message).toContain("blockMainThread in blocker.html");
+  }
+});
+
 // Clean interaction
 
 test("clean.html — clicking #go passes generous health thresholds", async ({ page, loop }) => {

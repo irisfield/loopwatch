@@ -3,10 +3,11 @@
   <body>
     <button id="block">Block</button>
     <script>
-      document.getElementById("block").addEventListener("click", () => {
+      function blockMainThread() {
         const end = Date.now() + 150;
         while (Date.now() < end) {}
-      });
+      }
+      document.getElementById("block").addEventListener("click", blockMainThread);
     </script>
   </body>
 </html>
