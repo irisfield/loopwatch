@@ -87,26 +87,7 @@ export function assertHealthy(
   measurement: SerializedLoopMeasurement,
   thresholds: HealthThresholds,
 ): void {
-  coreAssertHealthy(
-    {
-      value: undefined,
-      durationMs: measurement.durationMs,
-      lag: measurement.lag,
-      raf: measurement.raf,
-      longTasks: {
-        count: measurement.longTasks.count,
-        totalDurationMs: measurement.longTasks.totalDurationMs,
-        entries: [],
-      },
-      worstWindow: {
-        startMs: measurement.worstWindow.startMs,
-        endMs: measurement.worstWindow.endMs,
-        blockedTimeMs: measurement.worstWindow.blockedTimeMs,
-        longTasks: [],
-      },
-    },
-    thresholds,
-  );
+  coreAssertHealthy(measurement, thresholds);
 }
 
 async function measureWithPage(
