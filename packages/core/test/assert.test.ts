@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { assertHealthy } from "../src/assert";
 
-import type { LoopMonitorReport } from "../src/loop-monitor";
 import type { LoopMeasurement } from "../src/measure-lag";
 
 function makeMeasurement(
@@ -10,6 +9,7 @@ function makeMeasurement(
     lag?: Partial<LoopMeasurement<void>["lag"]>;
     longTasks?: Partial<LoopMeasurement<void>["longTasks"]>;
     raf?: Partial<LoopMeasurement<void>["raf"]>;
+    worstWindow?: Partial<LoopMeasurement<void>["worstWindow"]>;
   } = {},
 ): LoopMeasurement<void> {
   return {
@@ -41,34 +41,28 @@ function makeMeasurement(
       droppedFrames: 0,
       ...overrides.raf,
     },
-    worstWindow: { startMs: 0, endMs: 500, blockedTimeMs: 0, longTasks: [] },
+    worstWindow: {
+      startMs: 0,
+      endMs: 500,
+      blockedTimeMs: 0,
+      longTasks: [],
+      ...overrides.worstWindow,
+    },
   };
 }
 
-function makeMonitorReport(): LoopMonitorReport {
+interface TestLoafEntry extends PerformanceEntry {
+  scripts: { sourceFunctionName?: string; sourceURL?: string }[];
+}
+
+function makeLoafEntry(scripts: TestLoafEntry["scripts"]): TestLoafEntry {
   return {
-    durationMs: 500,
-    lag: {
-      sampleCount: 100,
-      min: 1,
-      max: 10,
-      mean: 3,
-      p50: 2,
-      p95: 8,
-      p99: 10,
-      blockedTimeMs: 0,
-      spikeCount: 0,
-    },
-    longTasks: { count: 0, totalDurationMs: 0, entries: [] },
-    raf: {
-      frameCount: 30,
-      estimatedFps: 59.9,
-      meanFrameTimeMs: 16.7,
-      p95FrameTimeMs: 18,
-      droppedFrames: 0,
-    },
-    worstWindow: { startMs: 0, endMs: 500, blockedTimeMs: 0, longTasks: [] },
-    isJanky: false,
+    name: "long-animation-frame",
+    entryType: "long-animation-frame",
+    startTime: 218,
+    duration: 142,
+    toJSON: () => ({}),
+    scripts,
   };
 }
 
@@ -418,9 +412,67 @@ describe("assertHealthy — thrown value", () => {
   });
 });
 
-describe("assertHealthy — type safety", () => {
-  it("LoopMonitorReport is not assignable to LoopMeasurement<T> (tsc enforces this)", () => {
-    // @ts-expect-error — LoopMonitorReport lacks .value, not assignable to LoopMeasurement<T>
-    assertHealthy(makeMonitorReport(), {});
+describe("assertHealthy — worst-window attribution line", () => {
+  it("appends the worst-blocking-window line with culprit when LoAF attribution exists", () => {
+    const entry = makeLoafEntry([
+      {
+        sourceFunctionName: "encryptPayload",
+        sourceURL: "https://example.com/static/js/checkout.js",
+      },
+    ]);
+    expect(() => {
+      assertHealthy(
+        makeMeasurement({
+          lag: { p99: 142.3 },
+          worstWindow: { startMs: 218, blockedTimeMs: 142, longTasks: [entry] },
+        }),
+        { maxP99: 30 },
+      );
+    }).toThrow("Worst blocking window: 142ms blocked at t=218ms (encryptPayload in checkout.js)");
+  });
+
+  it("appends the worst-blocking-window line without a culprit when no script attribution exists", () => {
+    expect(() => {
+      assertHealthy(
+        makeMeasurement({
+          lag: { p99: 142.3 },
+          worstWindow: { startMs: 218, blockedTimeMs: 142, longTasks: [] },
+        }),
+        { maxP99: 30 },
+      );
+    }).toThrow("Worst blocking window: 142ms blocked at t=218ms");
+  });
+
+  it("does not append the line when there are no violations", () => {
+    const entry = makeLoafEntry([
+      { sourceFunctionName: "encryptPayload", sourceURL: "checkout.js" },
+    ]);
+    expect(() => {
+      assertHealthy(
+        makeMeasurement({
+          worstWindow: { startMs: 218, blockedTimeMs: 142, longTasks: [entry] },
+        }),
+        { maxP99: 999 },
+      );
+    }).not.toThrow();
+  });
+
+  it("does not append the line when worstWindow.blockedTimeMs is 0", () => {
+    let caught: unknown;
+    try {
+      assertHealthy(
+        makeMeasurement({
+          lag: { p99: 142.3 },
+          worstWindow: { startMs: 218, blockedTimeMs: 0, longTasks: [] },
+        }),
+        { maxP99: 30 },
+      );
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    if (caught instanceof Error) {
+      expect(caught.message).not.toContain("Worst blocking window");
+    }
   });
 });
