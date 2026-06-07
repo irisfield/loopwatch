@@ -3,7 +3,10 @@
   "version": "0.0.1",
   "license": "MIT",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./assert": "./src/assert.ts",
+    "./summary": "./src/summary.ts",
+    "./serialization": "./src/serialization.ts"
   },
   "publish": {
     "include": ["src", "README.md", "LICENSE"]
