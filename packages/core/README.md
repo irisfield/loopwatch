@@ -25,8 +25,8 @@ loopwatch runs in the browser. Bundle it into your app with Vite, esbuild, or an
 ## Quick Start
 
 ```typescript
-import { measureLoopLag } from "loopwatch";
-import { assertHealthy } from "loopwatch/assert";
+import { measureLoopLag } from "@irisfield/loopwatch";
+import { assertHealthy } from "@irisfield/loopwatch/assert";
 
 const m = await measureLoopLag(async () => {
   await processCartItems(cart);
@@ -108,7 +108,7 @@ All exports are individually importable and tree-shake independently. The core p
 Wraps any function — sync or async — and measures event-loop health while it runs. Fires `setTimeout(0)` concurrently to sample lag, collects `requestAnimationFrame` intervals, and observes long tasks (using `long-animation-frame` when available, falling back to `longtask`). Returns a `LoopMeasurement<T>` when `fn` resolves.
 
 ```typescript
-import { measureLoopLag } from "loopwatch";
+import { measureLoopLag } from "@irisfield/loopwatch";
 
 const m = await measureLoopLag(async () => {
   await processCartItems(cart);
@@ -141,7 +141,7 @@ const m = await measureLoopLag(() => longRunningWork(), { signal: controller.sig
 Throws if any threshold is exceeded. Collects all violations before throwing — one error lists every failure. All thresholds are optional; passing `{}` is a no-op.
 
 ```typescript
-import { assertHealthy } from "loopwatch/assert";
+import { assertHealthy } from "@irisfield/loopwatch/assert";
 
 assertHealthy(m, {
   maxP99: 30, // fail if p99 lag exceeds 30 ms
@@ -161,7 +161,7 @@ Threshold check is strict-greater: `actual > threshold` fails, `actual === thres
 Formats a `LoopMeasurement` as a human-readable one-line string. Useful for `console.log` during local development. Does not throw for any input.
 
 ```typescript
-import { summary } from "loopwatch/summary";
+import { summary } from "@irisfield/loopwatch/summary";
 
 console.log(summary(m));
 // "523ms total · p50=1ms p99=4ms · 0 long task(s) · worst: 0ms blocked at t=0ms"
@@ -177,7 +177,7 @@ console.log(summary(m));
 Observes main-thread blocking work. Uses the `long-animation-frame` (LoAF) entry type when available (Chrome 116+), falling back to `longtask`. LoAF entries include `scripts` attribution — the source file and function name of the script that blocked the thread.
 
 ```typescript
-import { LongTaskObserver } from "loopwatch";
+import { LongTaskObserver } from "@irisfield/loopwatch";
 
 const observer = new LongTaskObserver({
   threshold: 50, // W3C minimum; raise to filter noise
@@ -206,7 +206,7 @@ A single 100 ms long task drops roughly 6 frames at 60 Hz and makes the page fee
 Runs `measureLoopLag` on a repeating cycle. Use it when you want ongoing app-level telemetry instead of a one-off probe.
 
 ```typescript
-import { LoopMonitor } from "loopwatch";
+import { LoopMonitor } from "@irisfield/loopwatch";
 
 const monitor = new LoopMonitor({
   intervalMs: 5000, // wait between cycles
@@ -236,7 +236,7 @@ monitor.stop();
 Diffs two `LoopMeasurement` objects. Returns a `LoopMeasurementDelta` with nested `lag`, `longTasks`, and `raf` sub-objects.
 
 ```typescript
-import { compareReports, measureLoopLag } from "loopwatch";
+import { compareReports, measureLoopLag } from "@irisfield/loopwatch";
 
 const before = await measureLoopLag(() => sleep(500));
 runExpensiveOperation();
@@ -268,7 +268,7 @@ For a comparison of loopwatch alongside React Scan, Sentry, Datadog, and Playwri
 Wrap the suspect handler to isolate which operation is blocking the thread:
 
 ```typescript
-import { compareReports, measureLoopLag } from "loopwatch";
+import { compareReports, measureLoopLag } from "@irisfield/loopwatch";
 
 button.addEventListener("click", async () => {
   const before = await measureLoopLag(() => sleep(200));
@@ -285,7 +285,7 @@ button.addEventListener("click", async () => {
 ### Compare before/after an optimization
 
 ```typescript
-import { compareReports, measureLoopLag } from "loopwatch";
+import { compareReports, measureLoopLag } from "@irisfield/loopwatch";
 
 const before = await measureLoopLag(() => sleep(500));
 runExpensiveOperation();
@@ -304,7 +304,7 @@ A negative `p99Delta` means the optimization reduced tail latency. Use `spikeCou
 Wire `LoopMonitor` to your telemetry pipeline for continuous production monitoring:
 
 ```typescript
-import { LoopMonitor } from "loopwatch";
+import { LoopMonitor } from "@irisfield/loopwatch";
 
 const monitor = new LoopMonitor({
   intervalMs: 30_000,
@@ -335,7 +335,7 @@ monitor.start();
 Browsers throttle `requestAnimationFrame` to ~1 fps (or pause it entirely) when a tab is hidden. Check `raf.estimatedFps` from a short measurement before kicking off rendering work:
 
 ```typescript
-import { measureLoopLag } from "loopwatch";
+import { measureLoopLag } from "@irisfield/loopwatch";
 
 async function isTabThrottled(): Promise<boolean> {
   const { raf } = await measureLoopLag(() => sleep(300));
@@ -383,7 +383,7 @@ Safari does not implement the `longtask` or `long-animation-frame` `PerformanceO
 To use `LongTaskObserver` safely across browsers:
 
 ```typescript
-import { EnvironmentNotSupportedError, LongTaskObserver } from "loopwatch";
+import { EnvironmentNotSupportedError, LongTaskObserver } from "@irisfield/loopwatch";
 
 try {
   const observer = new LongTaskObserver({ onLongTask: (entry) => report(entry) });

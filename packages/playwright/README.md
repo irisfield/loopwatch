@@ -4,12 +4,12 @@ Catch the interaction that blocks the main thread — before it ships.
 
 [![JSR](https://jsr.io/badges/@irisfield/loopwatch-playwright)](https://jsr.io/@irisfield/loopwatch-playwright)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Bundle size](https://img.shields.io/badge/fixture-1.2KB%20min%20%7C%200.6KB%20gzip-green.svg)
+![Bundle size](https://img.shields.io/badge/bundle-1.2KB%20min%20%7C%200.6KB%20gzip-green.svg)
 ![Chromium tested](https://img.shields.io/badge/tested-Chromium%20headless-blue.svg)
 
 ```typescript
 import { test as base } from "@playwright/test";
-import { loopwatchFixture, assertHealthy } from "loopwatch-playwright";
+import { loopwatchFixture, assertHealthy } from "@irisfield/loopwatch-playwright";
 
 const test = base.extend(loopwatchFixture);
 
@@ -87,7 +87,7 @@ bunx jsr add @irisfield/loopwatch-playwright @irisfield/loopwatch
 
 ```typescript
 import { test as base } from "@playwright/test";
-import { loopwatchFixture } from "loopwatch-playwright";
+import { loopwatchFixture } from "@irisfield/loopwatch-playwright";
 
 export const test = base.extend(loopwatchFixture);
 export { expect } from "@playwright/test";
@@ -97,7 +97,7 @@ export { expect } from "@playwright/test";
 
 ```typescript
 import { test } from "./fixtures";
-import { assertHealthy } from "loopwatch-playwright";
+import { assertHealthy } from "@irisfield/loopwatch-playwright";
 
 test("form submit does not block the thread", async ({ page, loop }) => {
   await page.goto("https://your-app.com/form");
@@ -145,7 +145,7 @@ assertHealthy(measurement: SerializedLoopMeasurement, thresholds: HealthThreshol
 Throws if any threshold is exceeded. Collects all violations before throwing — one error lists every failure. All thresholds are optional; passing `{}` is a no-op.
 
 ```typescript
-import { assertHealthy } from "loopwatch-playwright";
+import { assertHealthy } from "@irisfield/loopwatch-playwright";
 
 assertHealthy(m, {
   maxP50: 5,        // fail if median lag exceeds 5ms

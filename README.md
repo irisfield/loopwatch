@@ -16,7 +16,7 @@ A Playwright test that fails when an interaction blocks the main thread:
 
 ```typescript
 import { test as base } from "@playwright/test";
-import { loopwatchFixture, assertHealthy } from "loopwatch-playwright";
+import { loopwatchFixture, assertHealthy } from "@irisfield/loopwatch-playwright";
 
 const test = base.extend(loopwatchFixture);
 

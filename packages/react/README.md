@@ -36,7 +36,7 @@ bunx jsr add @irisfield/loopwatch-react @irisfield/loopwatch
 Runs a `LoopMonitor` for the lifetime of the component and returns the latest health report as React state. Re-renders the component on each new report.
 
 ```typescript
-import { useLoopWatch } from "loopwatch-react";
+import { useLoopWatch } from "@irisfield/loopwatch-react";
 
 function HealthIndicator() {
   const { isJanky, report } = useLoopWatch({ intervalMs: 5000 });
@@ -72,8 +72,8 @@ All options are optional. Omitting them uses the core `LoopMonitor` defaults.
 Returns a stable `measure` function that wraps any synchronous or async function in a loop-lag measurement. No React state is updated when `measure` is called — you opt in by calling `useState` yourself.
 
 ```typescript
-import { useLoopMeasure } from "loopwatch-react";
-import { summary } from "loopwatch/summary";
+import { useLoopMeasure } from "@irisfield/loopwatch-react";
+import { summary } from "@irisfield/loopwatch/summary";
 
 function CheckoutButton() {
   const { measure } = useLoopMeasure();
@@ -102,7 +102,7 @@ If you only want telemetry and don't need React state, this is the right approac
 
 ```typescript
 // Outside React — no hook needed, no re-renders
-import { LoopMonitor } from "loopwatch";
+import { LoopMonitor } from "@irisfield/loopwatch";
 
 const monitor = new LoopMonitor({
   intervalMs: 30_000,
