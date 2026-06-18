@@ -253,9 +253,9 @@ const delta = compareReports(before, after);
 
 ## Ecosystem
 
-- **[loopwatch](https://jsr.io/@irisfield/loopwatch)** — this package, measurement engine
-- **loopwatch-playwright** — Playwright fixture for CI enforcement (flagship)
-- **loopwatch-react** — React hooks for local diagnostics (optional)
+- **[@irisfield/loopwatch](https://jsr.io/@irisfield/loopwatch)** — this package, measurement engine
+- **[@irisfield/loopwatch-playwright](https://jsr.io/@irisfield/loopwatch-playwright)** — Playwright fixture for CI enforcement (flagship)
+- **@irisfield/loopwatch-react** — React hooks for local diagnostics (optional, not yet published)
 
 For a comparison of loopwatch alongside React Scan, Sentry, Datadog, and Playwright tracing, see [which tool for which job](docs/which-tool.md).
 

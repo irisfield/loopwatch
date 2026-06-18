@@ -12,46 +12,27 @@ Zero runtime dependencies. ESM-only. Built for Playwright CI first.
 
 ## The painkiller
 
-A Playwright test that fails when an interaction blocks the main thread:
+A failing Playwright test, in one line:
 
 ```typescript
-import { test as base } from "@playwright/test";
-import { loopwatchFixture, assertHealthy } from "@irisfield/loopwatch-playwright";
-
-const test = base.extend(loopwatchFixture);
-
-test("checkout submit stays responsive", async ({ page, loop }) => {
-  await page.goto("https://your-app.com/checkout");
-
-  const m = await loop.measure(page, async () => {
-    await page.click("#submit-order");
-  });
-
-  assertHealthy(m, {
-    maxP99: 30,       // tail input-handling lag must stay under 30ms
-    maxBlockedMs: 0,  // no blocking spike >= 50ms
-    maxLongTasks: 0,  // no task may hold the thread for >= 50ms
-  });
-});
+assertHealthy(await loop.measure(page, () => page.click("#submit-order")), { maxLongTasks: 0 });
 ```
-
-When the interaction blocks the thread, the build fails by naming what to fix — the metric, the measured value, the limit it broke, and the worst blocking window with its culprit:
 
 ```
 Loop health assertion failed:
-  - lag.p99 142.3ms exceeds limit 30ms
   - longTasks.count 3 exceeds limit 0
-  - lag.blockedTimeMs 142.3ms exceeds limit 0ms
   Worst blocking window: 142ms blocked at t=218ms (encryptPayload in checkout.js)
 ```
+
+Full setup and API → [`@irisfield/loopwatch-playwright`](packages/playwright).
 
 ## Packages
 
 | Package | What it's for |
 |---|---|
-| [`loopwatch-playwright`](packages/playwright) | **Start here.** Fail CI when a user interaction blocks the main thread. The flagship. |
-| [`loopwatch`](packages/core) | The measurement engine — `measureLoopLag`, `assertHealthy`, `LoopMonitor`. Use directly for in-browser monitoring and one-off measurements. |
-| [`loopwatch-react`](packages/react) | React hooks for ambient loop-health state and scoped measurement. A convenience layer, not the enforcement story. |
+| [`@irisfield/loopwatch-playwright`](packages/playwright) | **Start here.** Fail CI when a user interaction blocks the main thread. The flagship. |
+| [`@irisfield/loopwatch`](packages/core) | The measurement engine — `measureLoopLag`, `assertHealthy`, `LoopMonitor`. Use directly for in-browser monitoring and one-off measurements. |
+| [`@irisfield/loopwatch-react`](packages/react) | React hooks for ambient loop-health state and scoped measurement. A convenience layer, not the enforcement story. |
 
 ## What loopwatch measures — and what it doesn't
 
