@@ -4,7 +4,7 @@ Catch the interaction that blocks the main thread — before it ships.
 
 [![JSR](https://jsr.io/badges/@irisfield/loopwatch-playwright)](https://jsr.io/@irisfield/loopwatch-playwright)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Bundle size](https://img.shields.io/badge/bundle-1.2KB%20min%20%7C%200.6KB%20gzip-green.svg)
+![Bundle size](https://img.shields.io/badge/bundle-2.4KB%20min%20%7C%201.0KB%20gzip-green.svg)
 ![Chromium tested](https://img.shields.io/badge/tested-Chromium%20headless-blue.svg)
 
 ```typescript
